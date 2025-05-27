@@ -88,7 +88,7 @@ jobs:
   build-rustdesk-linux:
     needs: [generate-bridge-linux]
     name: build rustdesk linux ${{ matrix.job.target }}
-    runs-on: iZj6ca916rxk43mz7jrqjmZ #${{ matrix.job.on }}
+    runs-on: ${{ matrix.job.on }}
     strategy:
       fail-fast: false
       matrix:
@@ -157,7 +157,7 @@ jobs:
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
 
@@ -165,7 +165,7 @@ jobs:
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           submodules: recursive
 
       - name: Set Swap Space
@@ -654,7 +654,7 @@ jobs:
   build-appimage:
     name: Build appimage ${{ matrix.job.target }}
     needs: [build-rustdesk-linux]
-    runs-on: iZj6ca916rxk43mz7jrqjmZ #ubuntu-22.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -666,7 +666,7 @@ jobs:
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
 
@@ -674,7 +674,7 @@ jobs:
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           submodules: recursive
 
       - name: Download Binary
@@ -720,7 +720,7 @@ jobs:
     name: Build flatpak ${{ matrix.job.target }}${{ matrix.job.suffix }}
     needs:
       - build-rustdesk-linux
-    runs-on: iZj6ca916rxk43mz7jrqjmZ #${{ matrix.job.on }}
+    runs-on: ${{ matrix.job.on }}
     strategy:
       fail-fast: false
       matrix:
@@ -745,7 +745,7 @@ jobs:
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
 
@@ -753,7 +753,7 @@ jobs:
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           submodules: recursive
 
       - name: Download Binary
@@ -809,7 +809,7 @@ jobs:
 
   deploy:
     needs: [build-rustdesk-linux,build-flatpak,build-appimage]
-    runs-on: iZj6ca916rxk43mz7jrqjmZ #ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
 
       - name: Set rdgen value

@@ -88,7 +88,7 @@ jobs:
   build-rustdesk-android:
     needs: [generate-bridge-linux]
     name: build rustdesk android apk ${{ matrix.job.target }}
-    runs-on: iZj6ca916rxk43mz7jrqjmZ  #${{ matrix.job.os }}
+    runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -193,7 +193,7 @@ jobs:
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
        
@@ -201,7 +201,7 @@ jobs:
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: empso11/rustdesk
+          repository: rustdesk/rustdesk
           submodules: recursive
 
       - name: Install flutter

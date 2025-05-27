@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: iZj6ca916rxk43mz7jrqjmZ #ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: set docker image tag
         run: |

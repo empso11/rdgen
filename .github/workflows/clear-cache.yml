@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   clear-cache:
-    runs-on: iZj6ca916rxk43mz7jrqjmZ #ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Clear cache
         uses: actions/github-script@v7
