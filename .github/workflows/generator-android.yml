@@ -207,7 +207,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 15%"}'
 
       - name: Install vcpkg dependencies (universal APK)
         run: |
@@ -322,7 +322,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "75% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 75%"}'
 
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
