@@ -68,8 +68,14 @@ env:
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
+  generate-bridge-linux:
+    uses: ./.github/workflows/bridge.yml
+    with:
+      version: ${{ fromJson(inputs.extras).version }}
+
   build-rustdesk-android:
     name: build rustdesk android apk (universal)
+    needs: [generate-bridge-linux]
     runs-on: ubuntu-24.04
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -225,10 +231,11 @@ jobs:
           prefix-key: rustdesk-lib-cache-android
           key: universal
 
-      ###########################################################################
-      # ----------- ICONS, PATCHES, PARAMETERS, AND CUSTOM STEPS ---------------
-      ###########################################################################
+      ############################################################
+      # ----------- ICONS, PATCHES, PARAMETERS, CUSTOM STEPS -----
+      ############################################################
 
+      # 1. icon 替换
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
@@ -251,11 +258,37 @@ jobs:
           convert ./res/128x128.png -resize 200% ./res/128x128@2x.png
           cp ./src/ui.rs ./src/ui.rs.bak || true
 
-      # ...（省略：你可以在这里插入所有参数替换、补丁、定制等脚本，完全照旧）...
+      # 2. 参数替换
+      - name: 替换 Rendezvous Server / Public Key / API Server
+        run: |
+          sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
 
-      ###########################################################################
-      # ----------- BUILD JNI LIBS FOR UNIVERSAL APK (all supported ABI) -------
-      ###########################################################################
+      - name: 替换 App Name
+        if: inputs.appname != 'rustdesk'
+        run: |
+          sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./flutter/android/app/src/main/AndroidManifest.xml
+          sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./flutter/lib/main.dart
+          sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./Cargo.toml
+          sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./libs/hbb_common/src/config.rs
+
+      # 3. Patch/补丁支持（举例，按需加）
+      - name: 应用自定义补丁
+        if: ${{ fromJson(inputs.extras).patch_enable == 'true' }}
+        run: |
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/custom.diff
+          git apply custom.diff
+
+      # 4. 其它自定义参数、链接替换等
+      - name: 替换主页链接
+        if: ${{ fromJson(inputs.extras).urlLink != 'https://rustdesk.com' }}
+        run: |
+          sed -i -e "s|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g" ./flutter/lib/common.dart
+
+      ############################################################
+      # ----------- BUILD JNI LIBS FOR UNIVERSAL APK -------------
+      ############################################################
 
       - name: Build rustdesk lib (all arch)
         env:
@@ -283,9 +316,9 @@ jobs:
 
           echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
 
-      ###########################################################################
-      # ----------- UNIVERSAL APK BUILD -----------------
-      ###########################################################################
+      ############################################################
+      # ----------- UNIVERSAL APK BUILD --------------------------
+      ############################################################
 
       - name: Build rustdesk (universal)
         shell: bash
@@ -301,9 +334,9 @@ jobs:
           popd
           mkdir -p signed-apk; mv ./${{ inputs.filename }}-universal.apk ./signed-apk/
 
-      ###########################################################################
-      # ----------- SIGN, UPLOAD, REPORT STATUS, ERROR HANDLING -----------------
-      ###########################################################################
+      ############################################################
+      # ----------- SIGN, UPLOAD, REPORT STATUS, ERROR HANDLING --
+      ############################################################
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
