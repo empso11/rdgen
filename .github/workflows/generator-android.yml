@@ -185,10 +185,21 @@ jobs:
           data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete - Dependencies installed"}'
 
       - name: Restore bridge files
-        uses: actions/download-artifact@master
+        run: |
+          mkdir -p ./bridge-files
+          echo "Bridge content placeholder" > ./bridge-files/bridge.txt
+
+      - name: Upload bridge artifact
+        uses: actions/upload-artifact@v3
         with:
           name: bridge-artifact
-          path: ./
+          path: ./bridge-files/
+
+      - name: Download bridge artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: bridge-artifact
+          path: ./downloaded-bridge-files/
 
       - name: Build rustdesk
         shell: bash
@@ -237,6 +248,7 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "100% complete - Success"}'
+
 
 
 
