@@ -195,13 +195,10 @@ jobs:
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
-          # Build universal APK
-          pushd flutter
+          cd flutter  # 确保切换到包含 pubspec.yaml 的目录
           flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64
-          popd
-          mkdir -p signed-apk
-          mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+          mkdir -p ../signed-apk
+          mv build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk ../signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
       - name: Setup sign tool version variable
         shell: bash
