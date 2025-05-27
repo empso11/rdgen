@@ -89,8 +89,28 @@ jobs:
     name: Build RustDesk Android Universal APK
     runs-on: ubuntu-22.04
     env:
+      SCITER_RUST_VERSION: "1.75"
+      RUST_VERSION: "1.75"
+      CARGO_NDK_VERSION: "3.1.2"
+      SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
+      SCITER_NASM_DEBVERSION: "2.14-1"
+      LLVM_VERSION: "15.0.6"
+      FLUTTER_VERSION: "3.24.5"
+      ANDROID_FLUTTER_VERSION: "3.24.5"
+      FLUTTER_ELINUX_VERSION: "3.16.9"
+      TAG_NAME: "${{ inputs.upload-tag }}"
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
+      VERSION: "${{ fromJson(inputs.extras).version }}"
+      NDK_VERSION: "r27c"
+      ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
+      MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
+      UPLOAD_ARTIFACT: 'true'
+      SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+      STATUS_URL: "${{ secrets.GENURL }}/updategh"
       reltype: release
       suffix: ""
+
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -149,10 +169,17 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-      - name: Patch flutter
+      - name: Apply Flutter Patch
         run: |
           cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+          if [[ "${{ env.ANDROID_FLUTTER_VERSION }}" == "3.24.5" ]]; then
+            patch_file="${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+            if patch --dry-run -p1 < "$patch_file"; then
+              patch -p1 < "$patch_file"
+            else
+              echo "Patch already applied or corrupt!"
+            fi
+          fi
 
       - name: Prepare Android Libraries
         run: |
@@ -220,6 +247,7 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           files: |
             signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+
 
 
 
