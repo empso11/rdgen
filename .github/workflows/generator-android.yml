@@ -4,14 +4,6 @@ run-name: Custom Android Client Generator
 on: 
   workflow_dispatch:
     inputs:
-      use_self_hosted:
-        description: 'Use self-hosted runner? 选择 true 用你的自托管服务器（iZj6ceznxq2midd5osbrcgZ），否则用 GitHub 云端官方runner'
-        required: true
-        default: 'true'      # 默认自托管
-        type: choice
-        options:
-        - 'false'
-        - 'true'
       server:
         description: 'Rendezvous Server'
         required: true
@@ -58,12 +50,13 @@ on:
         default: 'rustdesk'
         type: string
       extras:
-        description: "Extra JSON: 其它自定义参数（如 patch_enable, urlLink, token 等）全部都放这里"
+        description: "Extra JSON: 其它自定义参数全部都放这里"
         required: false
         default: '{}'
         type: string
 
 env:
+  SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
   CARGO_NDK_VERSION: "3.1.2"
   FLUTTER_VERSION: "3.24.5"
@@ -85,12 +78,12 @@ jobs:
   build-rustdesk-android:
     name: build rustdesk android apk (universal)
     needs: [generate-bridge-linux]
-    runs-on: ${{ inputs.use_self_hosted == 'true' && fromJson('["self-hosted", "iZj6ceznxq2midd5osbrcgZ"]') || 'ubuntu-24.04' }}
+    runs-on:
+      - self-hosted
+      - iZj6ceznxq2midd5osbrcgZ
     steps:
-      # 释放磁盘空间（自托管可以忽略失败）
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
-        continue-on-error: true
         with:
           tool-cache: false
           android: false
@@ -106,15 +99,6 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: 打印关键变量（排查参数用，可删除）
-        run: |
-          echo "inputs.extras: ${{ inputs.extras }}"
-          echo "inputs.custom: ${{ inputs.custom }}"
-          echo "fromJson(inputs.extras).rdgen: ${{ fromJson(inputs.extras).rdgen }}"
-          echo "fromJson(inputs.extras).patch_enable: ${{ fromJson(inputs.extras).patch_enable }}"
-          echo "fromJson(inputs.extras).token: ${{ fromJson(inputs.extras).token }}"
-          echo "fromJson(inputs.extras).urlLink: ${{ fromJson(inputs.extras).urlLink }}"
 
       - name: Set rdgen value
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
@@ -289,17 +273,6 @@ jobs:
           sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./flutter/lib/main.dart
           sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./Cargo.toml
           sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./libs/hbb_common/src/config.rs
-
-      - name: 应用自定义补丁
-        if: ${{ fromJson(inputs.extras).patch_enable == 'true' }}
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/custom.diff
-          git apply custom.diff
-
-      - name: 替换主页链接
-        if: ${{ fromJson(inputs.extras).urlLink != 'https://rustdesk.com' }}
-        run: |
-          sed -i -e "s|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g" ./flutter/lib/common.dart
 
       - name: Build rustdesk lib (all arch)
         env:
