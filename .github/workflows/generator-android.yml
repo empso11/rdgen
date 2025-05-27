@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       use_self_hosted:
-        description: 'Use self-hosted runner? 选择 true 用你的自托管服务器，否则用 GitHub 云端官方runner'
+        description: 'Use self-hosted runner? 选择 true 用你的自托管服务器（iZj6ceznxq2midd5osbrcgZ），否则用 GitHub 云端官方runner'
         required: true
-        default: 'false'
+        default: 'true'
         type: choice
         options:
         - 'false'
@@ -42,11 +42,6 @@ on:
         required: false
         default: 'false'
         type: string
-      logolink:
-        description: "logo link"
-        required: false
-        default: 'false'
-        type: string
       appname:
         description: "app name"
         required: true
@@ -58,8 +53,8 @@ on:
         default: 'rustdesk'
         type: string
       extras:
-        description: "extra inputs in json"
-        required: true
+        description: "Extra JSON: 其它自定义参数（如 patch_enable, logolink, urlLink, token 等）全部都放这里"
+        required: false
         default: '{}'
         type: string
 
@@ -85,12 +80,13 @@ jobs:
   build-rustdesk-android:
     name: build rustdesk android apk (universal)
     needs: [generate-bridge-linux]
-    # 下面这行自动切换运行器，如果选择 true 就用你的自托管服务器，否则用 GitHub 官方云端
+    # 自动切换运行器：选择 true 用自托管，false 用云端官方
     runs-on: ${{ inputs.use_self_hosted == 'true' && fromJson('["self-hosted", "iZj6ceznxq2midd5osbrcgZ"]') || 'ubuntu-24.04' }}
     steps:
-      # ---------- 环境准备 ----------
+      # 释放磁盘空间，仅云端有效，自托管可忽略失败
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
+        continue-on-error: true
         with:
           tool-cache: false
           android: false
@@ -163,7 +159,6 @@ jobs:
                tree \
                wget
 
-      # ---------- 代码检出 ----------
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
@@ -179,7 +174,6 @@ jobs:
           repository: rustdesk/rustdesk
           submodules: recursive
 
-      # ---------- Flutter & NDK ----------
       - name: Install flutter
         uses: subosito/flutter-action@v2
         with:
@@ -198,7 +192,6 @@ jobs:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: true
 
-      # ---------- vcpkg ----------
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
         with:
@@ -231,14 +224,12 @@ jobs:
           test -f /opt/artifacts/vcpkg/installed/armeabi-v7a/include/libavutil/attributes.h
           test -f /opt/artifacts/vcpkg/installed/x64-android/include/libavutil/attributes.h
 
-      # ---------- 还原 bridge 文件 ----------
       - name: Restore bridge files
         uses: actions/download-artifact@v4
         with:
           name: bridge-artifact
           path: ./
 
-      # ---------- Rust 工具链 ----------
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
@@ -250,7 +241,7 @@ jobs:
           prefix-key: rustdesk-lib-cache-android
           key: universal
 
-      # ---------- ICON、参数、补丁 ----------
+      # ICON自定义
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
@@ -273,6 +264,7 @@ jobs:
           convert ./res/128x128.png -resize 200% ./res/128x128@2x.png
           cp ./src/ui.rs ./src/ui.rs.bak || true
 
+      # 参数替换
       - name: 参数替换 - Rendezvous Server / Public Key / API Server
         run: |
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
@@ -299,7 +291,7 @@ jobs:
         run: |
           sed -i -e "s|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g" ./flutter/lib/common.dart
 
-      # ---------- JNI so 构建 ----------
+      # SO构建
       - name: Build rustdesk lib (all arch)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -326,7 +318,7 @@ jobs:
 
           echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
 
-      # ---------- APK 打包 ----------
+      # APK打包
       - name: Build rustdesk (universal)
         shell: bash
         env:
@@ -341,7 +333,7 @@ jobs:
           popd
           mkdir -p signed-apk; mv ./${{ inputs.filename }}-universal.apk ./signed-apk/
 
-      # ---------- 签名、上传、上报 ----------
+      # 签名、上传、上报
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
