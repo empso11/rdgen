@@ -7,7 +7,7 @@ on:
       use_self_hosted:
         description: 'Use self-hosted runner? 选择 true 用你的自托管服务器（iZj6ceznxq2midd5osbrcgZ），否则用 GitHub 云端官方runner'
         required: true
-        default: 'true'
+        default: 'true'      # 默认自托管
         type: choice
         options:
         - 'false'
@@ -42,6 +42,11 @@ on:
         required: false
         default: 'false'
         type: string
+      logolink:
+        description: "logo link"
+        required: false
+        default: 'false'
+        type: string
       appname:
         description: "app name"
         required: true
@@ -53,7 +58,7 @@ on:
         default: 'rustdesk'
         type: string
       extras:
-        description: "Extra JSON: 其它自定义参数（如 patch_enable, logolink, urlLink, token 等）全部都放这里"
+        description: "Extra JSON: 其它自定义参数（如 patch_enable, urlLink, token 等）全部都放这里"
         required: false
         default: '{}'
         type: string
@@ -80,10 +85,9 @@ jobs:
   build-rustdesk-android:
     name: build rustdesk android apk (universal)
     needs: [generate-bridge-linux]
-    # 自动切换运行器：选择 true 用自托管，false 用云端官方
     runs-on: ${{ inputs.use_self_hosted == 'true' && fromJson('["self-hosted", "iZj6ceznxq2midd5osbrcgZ"]') || 'ubuntu-24.04' }}
     steps:
-      # 释放磁盘空间，仅云端有效，自托管可忽略失败
+      # 释放磁盘空间（自托管可以忽略失败）
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         continue-on-error: true
@@ -102,6 +106,15 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: 打印关键变量（排查参数用，可删除）
+        run: |
+          echo "inputs.extras: ${{ inputs.extras }}"
+          echo "inputs.custom: ${{ inputs.custom }}"
+          echo "fromJson(inputs.extras).rdgen: ${{ fromJson(inputs.extras).rdgen }}"
+          echo "fromJson(inputs.extras).patch_enable: ${{ fromJson(inputs.extras).patch_enable }}"
+          echo "fromJson(inputs.extras).token: ${{ fromJson(inputs.extras).token }}"
+          echo "fromJson(inputs.extras).urlLink: ${{ fromJson(inputs.extras).urlLink }}"
 
       - name: Set rdgen value
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
@@ -241,7 +254,6 @@ jobs:
           prefix-key: rustdesk-lib-cache-android
           key: universal
 
-      # ICON自定义
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
@@ -264,7 +276,6 @@ jobs:
           convert ./res/128x128.png -resize 200% ./res/128x128@2x.png
           cp ./src/ui.rs ./src/ui.rs.bak || true
 
-      # 参数替换
       - name: 参数替换 - Rendezvous Server / Public Key / API Server
         run: |
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
@@ -279,7 +290,6 @@ jobs:
           sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./Cargo.toml
           sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./libs/hbb_common/src/config.rs
 
-      # 补丁举例（如有补丁则用，没有可以注释掉）
       - name: 应用自定义补丁
         if: ${{ fromJson(inputs.extras).patch_enable == 'true' }}
         run: |
@@ -291,7 +301,6 @@ jobs:
         run: |
           sed -i -e "s|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g" ./flutter/lib/common.dart
 
-      # SO构建
       - name: Build rustdesk lib (all arch)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -318,7 +327,6 @@ jobs:
 
           echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
 
-      # APK打包
       - name: Build rustdesk (universal)
         shell: bash
         env:
@@ -333,7 +341,6 @@ jobs:
           popd
           mkdir -p signed-apk; mv ./${{ inputs.filename }}-universal.apk ./signed-apk/
 
-      # 签名、上传、上报
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
