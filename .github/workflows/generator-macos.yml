@@ -130,7 +130,7 @@ jobs:
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
-            repository: empso11/rustdesk
+            repository: rustdesk/rustdesk
             ref: refs/tags/${{ env.VERSION }}
             submodules: recursive
   
@@ -138,7 +138,7 @@ jobs:
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
-            repository: empso11/rustdesk
+            repository: rustdesk/rustdesk
             submodules: recursive
 
       - name: Install imagemagick and potrace and nasm and and
