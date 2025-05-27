@@ -85,181 +85,452 @@ jobs:
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
-  build-rustdesk-android-universal:
-  needs: [generate-bridge-linux]
-  name: Build RustDesk Android Universal APK
-  if: ${{ inputs.upload-artifact }}
-  runs-on: ubuntu-22.04
-  steps:
-    # Step 1: 释放磁盘空间
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        tool-cache: false
-        android: false
-        dotnet: true
-        haskell: true
-        large-packages: false
-        docker-images: true
-        swap-storage: false
+  build-rustdesk-android:
+    needs: [generate-bridge-linux]
+    name: build rustdesk android apk
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      # 原矩阵配置被注释，仅保留单一通用 APK 配置
+      # matrix:
+      #   job:
+      #     - {
+      #         arch: aarch64,
+      #         target: aarch64-linux-android,
+      #         os: ubuntu-24.04,
+      #         reltype: release,
+      #         suffix: "",
+      #       }
+      #     - {
+      #         arch: armv7,
+      #         target: armv7-linux-androideabi,
+      #         os: ubuntu-24.04,
+      #         reltype: release,
+      #         suffix: "",
+      #       }
+      #     - {
+      #         arch: x86_64,
+      #         target: x86_64-linux-android,
+      #         os: ubuntu-24.04,
+      #         reltype: release,
+      #         suffix: "",
+      #       }
 
-    # Step 2: 检出代码
-    - name: Checkout source code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: false
 
-    # Step 3: 安装依赖
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          clang \
-          cmake \
-          curl \
-          gcc-multilib \
-          git \
-          g++ \
-          g++-multilib \
-          libayatana-appindicator3-dev \
-          libasound2-dev \
-          libc6-dev \
-          libclang-11-dev \
-          libunwind-dev \
-          libgstreamer1.0-dev \
-          libgstreamer-plugins-base1.0-dev \
-          libgtk-3-dev \
-          libpam0g-dev \
-          libpulse-dev \
-          libva-dev \
-          libxcb-randr0-dev \
-          libxcb-shape0-dev \
-          libxcb-xfixes0-dev \
-          libxdo-dev \
-          libxfixes-dev \
-          llvm-11-dev \
-          nasm \
-          ninja-build \
-          openjdk-17-jdk-headless \
-          pkg-config \
-          tree \
-          wget
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-    # Step 4: 安装 Flutter
-    - name: Install flutter
-      uses: subosito/flutter-action@v2
-      with:
-        channel: "stable"
-        flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
+      - name: Set rdgen value (when rdgen=true)
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+        run: |
+          echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
 
-    # Step 5: Patch flutter
-    - name: Patch flutter
-      run: |
-        cd $(dirname $(dirname $(which flutter)))
-        [[ "3.24.5" == ${{ env.ANDROID_FLUTTER_VERSION }} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+      - name: Set rdgen value (when rdgen=false)
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        run: |
+          echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $GITHUB_ENV
 
-    # Step 6: 修改代码中的动态参数
-    - name: Modify RustDesk Parameters
-      run: |
-        # 修改 Cargo.toml 中的 appname 和描述信息
-        sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
-        sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ inputs.appname }}"|' ./Cargo.toml
-        sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ inputs.appname }}"|' ./Cargo.toml
-        sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./Cargo.toml
-        sed -i 's|name = "RustDesk"|name = "${{ inputs.appname }}"|' ./Cargo.toml
+      - name: Report Status (5% complete)
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
 
-        # 修改 Portable 版本文件
-        sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
-        sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
-        sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
-        sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./libs/portable/Cargo.toml
+      - name: Install dependencies
+        # 保留所有依赖，确保原有功能完整无缺
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+               clang \
+               cmake \
+               curl \
+               gcc-multilib \
+               git \
+               g++ \
+               g++-multilib \
+               imagemagick \
+               libayatana-appindicator3-dev \
+               libasound2-dev \
+               libc6-dev \
+               libclang-dev \
+               libunwind-dev \
+               libgstreamer1.0-dev \
+               libgstreamer-plugins-base1.0-dev \
+               libgtk-3-dev \
+               libpam0g-dev \
+               libpulse-dev \
+               libva-dev \
+               libvdpau-dev \
+               libxcb-randr0-dev \
+               libxcb-shape0-dev \
+               libxcb-xfixes0-dev \
+               libxdo-dev \
+               libxfixes-dev \
+               llvm-dev \
+               nasm \
+               ninja-build \
+               openjdk-17-jdk-headless \
+               pkg-config \
+               tree \
+               wget
 
-        # 修改 Android 文件
-        sed -i 's|android:label="RustDesk"|android:label="${{ inputs.appname }}"|' ./flutter/android/app/src/main/AndroidManifest.xml
-        sed -i 's|android:label="RustDesk Input"|android:label="${{ inputs.appname }} Input"|' ./flutter/android/app/src/main/AndroidManifest.xml
-        sed -i 's|RustDesk is Open|${{ inputs.appname }} is Open|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/BootReceiver.kt
-        sed -i 's|Show Rustdesk|Show ${{ inputs.appname }}|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/FloatingWindowService.kt
+      - name: Checkout source code (when not master branch)
+        if: ${{ env.VERSION != 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+          ref: refs/tags/${{ env.VERSION }}
+          submodules: recursive
+       
+      - name: Checkout source code (when master branch)
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+          submodules: recursive
 
-        # 修改 Flutter 文件
-        sed -i 's|RustDesk|${{ inputs.appname }}|' ./flutter/lib/main.dart
-        sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/lib/desktop/widgets/tabbar_widget.dart
+      - name: Install flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-    # Step 7: 修改服务器和密钥配置
-    - name: Modify Servers and Keys
-      run: |
-        sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
-        sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
-        sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
+      - name: Patch flutter
+        continue-on-error: true
+        run: |
+          cd $(dirname $(dirname $(which flutter)))
+          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
-    # Step 8: 编译 RustDesk APK
-    - name: Build RustDesk APK
-      env:
-        JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      run: |
-        export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
-        sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
-        pushd flutter
-        flutter build apk "--release" --target-platform android-arm64,android-arm,android-x64,android-x86
-        popd
-        mkdir -p signed-apk
-        mv ./flutter/build/app/outputs/flutter-apk/app-release.apk signed-apk/rustdesk-${{ env.VERSION }}-universal.apk
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
 
-    # Step 9: 上报进度 - 编译完成
-    - name: Report 50% Progress
-      uses: fjogeleit/http-request-action@v1
-      with:
-        url: ${{ env.STATUS_URL }}
-        method: POST
-        customHeaders: '{"Content-Type": "application/json"}'
-        data: |
-          {
-            "uuid": "${{ inputs.uuid }}",
-            "status": "50% complete"
-          }
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: /opt/artifacts/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
 
-    # Step 10: APK 签名
-    - uses: r0adkll/sign-android-release@v1
-      name: Sign app APK
-      if: env.ANDROID_SIGNING_KEY != null
-      id: sign-rustdesk
-      with:
-        releaseDirectory: ./signed-apk
-        signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
-        alias: ${{ secrets.ANDROID_ALIAS }}
-        keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
-        keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Report Status (15% complete)
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
 
-    # Step 11: 上报进度 - 签名完成
-    - name: Report 100% Progress
-      uses: fjogeleit/http-request-action@v1
-      with:
-        url: ${{ env.STATUS_URL }}
-        method: POST
-        customHeaders: '{"Content-Type": "application/json"}'
-        data: |
-          {
-            "uuid": "${{ inputs.uuid }}",
-            "status": "Success"
-          }
+      - name: Install vcpkg dependencies
+        # 修改为通用架构 "universal"，保留原有依赖安装逻辑
+        run: |
+          ./flutter/build_android_deps.sh "universal"
+        shell: bash
 
-    # Step 12: 上传 APK 到 GitHub Artifact
-    - name: Upload APK as artifact
-      if: env.UPLOAD_ARTIFACT == 'true'
-      uses: actions/upload-artifact@v3
-      with:
-        name: rustdesk-universal.apk
-        path: signed-apk/rustdesk-${{ env.VERSION }}-universal.apk
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
 
-    # Step 13: 发布到 GitHub Release
-    - name: Publish APK to GitHub Release
-      if: env.UPLOAD_ARTIFACT == 'true'
-      uses: softprops/action-gh-release@v1
-      with:
-        prerelease: true
-        tag_name: ${{ env.TAG_NAME }}
-        files: |
-          signed-apk/rustdesk-${{ env.VERSION }}-universal.apk
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: "rustfmt"
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rustdesk-lib-cache-android
+          key: universal
 
+      ##########################################################
+      # 通用 APK 构建逻辑
+      ##########################################################
+      - name: Build rustdesk APK
+        shell: bash
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+        run: |
+          mkdir -p ./flutter/android/app/src/main/jniLibs/universal
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/universal/
+          echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
+          pushd flutter
+          flutter build apk --release
+          mv build/app/outputs/flutter-apk/app-release.apk ../rustdesk-${{ env.VERSION }}.apk
+          popd
 
+      - name: Report Status (75% complete)
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "75% complete"}'
+
+      ##########################################################
+      # APK 签名
+      ##########################################################
+      - uses: r0adkll/sign-android-release@v1
+        name: Sign app APK
+        continue-on-error: true
+        if: env.ANDROID_SIGNING_KEY != null
+        id: sign-rustdesk
+        with:
+          releaseDirectory: ./
+          signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
+          alias: ${{ secrets.ANDROID_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      ##########################################################
+      # 上传 APK 文件到服务器
+      ##########################################################
+      - name: send file to rdgen server
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./rustdesk-${{ env.VERSION }}.apk" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+
+      - name: send file to api server
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./rustdesk-${{ env.VERSION }}.apk" ${{ inputs.apiServer }}/api/save_custom_client
+
+      ##########################################################
+      # 最终状态报告
+      ##########################################################
+      - name: Report Status (Success)
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
+
+      - name: failed
+        if: failure()
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
+
+      - name: failed
+        if: cancelled()
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
+          
+  # build-rustdesk-android-universal:
+  #   #needs: [build-rustdesk-android]
+  #   needs: [generate-bridge-linux]
+  #   name: build rustdesk android universal apk
+  #   if: ${{ inputs.upload-artifact }}
+  #   runs-on: ubuntu-22.04
+  #   env:
+  #     reltype: release
+  #     x86_target: "" # can be ",android-x86"
+  #     suffix: ""
+  #   steps:
+  #     - name: Free Disk Space (Ubuntu)
+  #       uses: jlumbroso/free-disk-space@main
+  #       with:
+  #         tool-cache: false
+  #         android: false
+  #         dotnet: true
+  #         haskell: true
+  #         large-packages: false
+  #         docker-images: true
+  #         swap-storage: false
+
+  #     - name: Export GitHub Actions cache environment variables
+  #       uses: actions/github-script@v6
+  #       with:
+  #         script: |
+  #           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+  #           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+  #     - name: Install dependencies
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -y \
+  #              clang \
+  #              cmake \
+  #              curl \
+  #              gcc-multilib \
+  #              git \
+  #              g++ \
+  #              g++-multilib \
+  #              libayatana-appindicator3-dev \
+  #              libasound2-dev \
+  #              libc6-dev \
+  #              libclang-11-dev \
+  #              libunwind-dev \
+  #              libgstreamer1.0-dev \
+  #              libgstreamer-plugins-base1.0-dev \
+  #              libgtk-3-dev \
+  #              libpam0g-dev \
+  #              libpulse-dev \
+  #              libva-dev \
+  #              libxcb-randr0-dev \
+  #              libxcb-shape0-dev \
+  #              libxcb-xfixes0-dev \
+  #              libxdo-dev \
+  #              libxfixes-dev \
+  #              llvm-11-dev \
+  #              nasm \
+  #              ninja-build \
+  #              openjdk-17-jdk-headless \
+  #              pkg-config \
+  #              tree \
+  #              wget
+
+  #     - name: Checkout source code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+
+  #     - name: Install flutter
+  #       uses: subosito/flutter-action@v2
+  #       with:
+  #         channel: "stable"
+  #         flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
+
+  #     - name: Patch flutter
+  #       run: |
+  #         cd $(dirname $(dirname $(which flutter)))
+  #         [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+  #     - name: Restore bridge files
+  #       uses: actions/download-artifact@master
+  #       with:
+  #         name: bridge-artifact
+  #         path: ./
+
+  #     - name: Download Rustdesk library from Artifacts
+  #       uses: actions/download-artifact@master
+  #       with:
+  #         name: librustdesk.so.aarch64-linux-android
+  #         path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
+
+  #     - name: Download Rustdesk library from Artifacts
+  #       uses: actions/download-artifact@master
+  #       with:
+  #         name: librustdesk.so.armv7-linux-androideabi
+  #         path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
+
+  #     - name: Download Rustdesk library from Artifacts
+  #       uses: actions/download-artifact@master
+  #       with:
+  #         name: librustdesk.so.x86_64-linux-android
+  #         path: ./flutter/android/app/src/main/jniLibs/x86_64
+
+  #     - name: Download Rustdesk library from Artifacts
+  #       if: ${{ env.reltype == 'debug' }}
+  #       uses: actions/download-artifact@master
+  #       with:
+  #         name: librustdesk.so.i686-linux-android
+  #         path: ./flutter/android/app/src/main/jniLibs/x86
+
+  #     - name: Build rustdesk
+  #       shell: bash
+  #       env:
+  #         JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+  #       run: |
+  #         export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
+  #         # temporary use debug sign config
+  #         sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
+  #         mv ./flutter/android/app/src/main/jniLibs/arm64-v8a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+  #         cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
+  #         mv ./flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
+  #         cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/
+  #         mv ./flutter/android/app/src/main/jniLibs/x86_64/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
+  #         cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
+  #         if [ "${{ env.reltype }}" = "debug" ]; then
+  #           mv ./flutter/android/app/src/main/jniLibs/x86/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86/librustdesk.so
+  #           cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86/
+  #         fi
+  #         # build flutter
+  #         pushd flutter
+  #         flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64${{ env.x86_target }}
+  #         popd
+  #         mkdir -p signed-apk
+  #         mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+
+  #     # https://github.com/r0adkll/sign-android-release/issues/84#issuecomment-1889636075
+  #     - name: Setup sign tool version variable
+  #       shell: bash
+  #       run: |
+  #         BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
+  #         echo "ANDROID_SIGN_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
+  #         echo Last build tool version is: $BUILD_TOOL_VERSION
+
+  #     - uses: r0adkll/sign-android-release@v1
+  #       name: Sign app APK
+  #       if: env.ANDROID_SIGNING_KEY != null
+  #       id: sign-rustdesk
+  #       with:
+  #         releaseDirectory: ./signed-apk
+  #         signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
+  #         alias: ${{ secrets.ANDROID_ALIAS }}
+  #         keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+  #         keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+  #       env:
+  #         # env.ANDROID_SIGN_TOOL_VERSION is set by Step "Setup sign tool version variable"
+  #         BUILD_TOOLS_VERSION: ${{ env.ANDROID_SIGN_TOOL_VERSION }}
+
+  #     - name: Upload Artifacts
+  #       if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
+  #       uses: actions/upload-artifact@master
+  #       with:
+  #         name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
+  #         path: ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
+
+  #     - name: Publish signed apk package
+  #       if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
+  #       uses: softprops/action-gh-release@v1
+  #       with:
+  #         prerelease: true
+  #         tag_name: ${{ env.TAG_NAME }}
+  #         files: |
+  #           ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
+
+  #     - name: Publish unsigned apk package
+  #       if: env.ANDROID_SIGNING_KEY == null && env.UPLOAD_ARTIFACT == 'true'
+  #       uses: softprops/action-gh-release@v1
+  #       with:
+  #         prerelease: true
+  #         tag_name: ${{ env.TAG_NAME }}
+  #         files: |
+  #           signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
