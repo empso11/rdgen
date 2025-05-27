@@ -103,13 +103,11 @@ jobs:
         docker-images: true
         swap-storage: false
 
-    # Step 2: 导出 GitHub Actions 缓存环境变量
-    - name: Export GitHub Actions cache environment variables
-      uses: actions/github-script@v6
+    # Step 2: 检出代码
+    - name: Checkout source code
+      uses: actions/checkout@v4
       with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+        submodules: recursive
 
     # Step 3: 安装依赖
     - name: Install dependencies
@@ -147,20 +145,20 @@ jobs:
           tree \
           wget
 
-    # Step 4: 检出代码
-    - name: Checkout source code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    # Step 5: 安装 Flutter
+    # Step 4: 安装 Flutter
     - name: Install flutter
       uses: subosito/flutter-action@v2
       with:
         channel: "stable"
         flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-    # Step 6: 动态修改代码中的参数
+    # Step 5: Patch flutter
+    - name: Patch flutter
+      run: |
+        cd $(dirname $(dirname $(which flutter)))
+        [[ "3.24.5" == ${{ env.ANDROID_FLUTTER_VERSION }} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+    # Step 6: 修改代码中的动态参数
     - name: Modify RustDesk Parameters
       run: |
         # 修改 Cargo.toml 中的 appname 和描述信息
@@ -211,9 +209,13 @@ jobs:
       uses: fjogeleit/http-request-action@v1
       with:
         url: ${{ env.STATUS_URL }}
-        method: 'POST'
+        method: POST
         customHeaders: '{"Content-Type": "application/json"}'
-        data: '{"uuid": "${{ inputs.uuid }}", "status": "50% complete"}'
+        data: |
+          {
+            "uuid": "${{ inputs.uuid }}",
+            "status": "50% complete"
+          }
 
     # Step 10: APK 签名
     - uses: r0adkll/sign-android-release@v1
@@ -232,26 +234,32 @@ jobs:
       uses: fjogeleit/http-request-action@v1
       with:
         url: ${{ env.STATUS_URL }}
-        method: 'POST'
+        method: POST
         customHeaders: '{"Content-Type": "application/json"}'
-        data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
+        data: |
+          {
+            "uuid": "${{ inputs.uuid }}",
+            "status": "Success"
+          }
 
     # Step 12: 上传 APK 到 GitHub Artifact
     - name: Upload APK as artifact
       if: env.UPLOAD_ARTIFACT == 'true'
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v3
       with:
         name: rustdesk-universal.apk
         path: signed-apk/rustdesk-${{ env.VERSION }}-universal.apk
 
     # Step 13: 发布到 GitHub Release
     - name: Publish APK to GitHub Release
-    if: env.UPLOAD_ARTIFACT == 'true'
-    uses: softprops/action-gh-release@v1
-    with:
-      prerelease: true
-      tag_name: ${{ env.TAG_NAME }}
-      files: |
-        signed-apk/rustdesk-${{ env.VERSION }}-universal.apk
+      if: env.UPLOAD_ARTIFACT == 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        prerelease: true
+        tag_name: ${{ env.TAG_NAME }}
+        files: |
+          signed-apk/rustdesk-${{ env.VERSION }}-universal.apk
+
+
 
 
