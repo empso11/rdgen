@@ -620,6 +620,7 @@ jobs:
           
   build-rustdesk-android-universal:
     #needs: [build-rustdesk-android]
+    needs: [generate-bridge-linux]
     name: build rustdesk android universal apk
     if: ${{ inputs.upload-artifact }}
     runs-on: ubuntu-22.04
