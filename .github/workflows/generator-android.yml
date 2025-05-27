@@ -33,11 +33,6 @@ on:
         required: false
         default: 'false'
         type: string
-      logolink:
-        description: "logo link"
-        required: false
-        default: 'false'
-        type: string
       appname:
         description: "app name"
         required: true
@@ -58,21 +53,11 @@ env:
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
   CARGO_NDK_VERSION: "3.1.2"
-  SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
-  SCITER_NASM_DEBVERSION: "2.14-1"
-  LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   ANDROID_FLUTTER_VERSION: "3.24.5"
-  FLUTTER_ELINUX_VERSION: "3.16.9"
-  TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
-  ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
-  MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
-  SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
@@ -143,43 +128,29 @@ jobs:
       - name: Patch flutter
         run: |
           cd $(dirname $(dirname $(which flutter)))
-          if [[ "${{ env.ANDROID_FLUTTER_VERSION }}" == "3.24.5" ]]; then
-            patch_file="${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
-            if patch --dry-run -p1 < "$patch_file"; then
-              patch -p1 < "$patch_file"
-            else
-              echo "Patch already applied or corrupt!"
-            fi
-          fi
+          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
-      - name: Prepare Android Libraries
-        run: |
-          mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
-          mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
-          mkdir -p ./flutter/android/app/src/main/jniLibs/x86_64
-          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
-          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/
-          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
 
-      - name: Build RustDesk Universal APK
+      - name: Build APK
         shell: bash
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          cd flutter
+          export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
+          echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
+          pushd flutter
           flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64
-          mkdir -p ../signed-apk
-          mv build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk ../signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+          popd
+          mkdir -p signed-apk
+          mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/${{ inputs.filename }}-${{ env.VERSION }}-universal.apk
 
-      - name: Setup sign tool version variable
-        shell: bash
-        run: |
-          BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
-          echo "ANDROID_SIGN_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
-          echo Last build tool version is: $BUILD_TOOL_VERSION
-
-      - uses: r0adkll/sign-android-release@v1
-        name: Sign app APK
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
         if: env.ANDROID_SIGNING_KEY != null
         id: sign-rustdesk
         with:
@@ -188,30 +159,17 @@ jobs:
           alias: ${{ secrets.ANDROID_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: ${{ env.ANDROID_SIGN_TOOL_VERSION }}
 
-      - name: Upload Artifacts
-        if: env.ANDROID_SIGNING_KEY != null
+      - name: Upload APK
         uses: actions/upload-artifact@master
         with:
-          name: rustdesk-${{ env.VERSION }}-universal.apk
+          name: rustdesk-${{ env.VERSION }}.apk
           path: ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
 
-      - name: Publish signed apk package
-        if: env.ANDROID_SIGNING_KEY != null
+      - name: Publish APK
         uses: softprops/action-gh-release@v1
         with:
           prerelease: true
-          tag_name: ${{ env.TAG_NAME }}
+          tag_name: ${{ inputs.upload-tag }}
           files: |
             ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
-
-      - name: Publish unsigned apk package
-        if: env.ANDROID_SIGNING_KEY == null
-        uses: softprops/action-gh-release@v1
-        with:
-          prerelease: true
-          tag_name: ${{ env.TAG_NAME }}
-          files: |
-            signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
