@@ -228,9 +228,9 @@ jobs:
       # 1. 补充：强制再装一次 ffmpeg，确保 vcpkg 没出错
       - name: Ensure ffmpeg is installed for all Android triplets
         run: |
-          /opt/artifacts/vcpkg/vcpkg install ffmpeg:arm64-android
-          /opt/artifacts/vcpkg/vcpkg install ffmpeg:armeabi-v7a
-          /opt/artifacts/vcpkg/vcpkg install ffmpeg:x64-android
+          /opt/artifacts/vcpkg/vcpkg install ffmpeg --triplet=arm64-android
+          /opt/artifacts/vcpkg/vcpkg install ffmpeg --triplet=armeabi-v7a
+          /opt/artifacts/vcpkg/vcpkg install ffmpeg --triplet=x64-android
 
       # 2. 检查头文件是否存在，如不存在会直接 fail，便于排查
       - name: Check ffmpeg header files
