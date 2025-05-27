@@ -65,7 +65,8 @@ env:
   ANDROID_FLUTTER_VERSION: "3.24.5"
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite;https://vcpkg-mirror.oss-cn-hongkong.aliyuncs.com/"
+  # 只使用官方支持的类型，阿里源作为 http 二进制源指定
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite;http,https://vcpkg-mirror.oss-cn-hongkong.aliyuncs.com/,read"
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
