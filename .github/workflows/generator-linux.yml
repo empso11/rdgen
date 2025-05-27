@@ -88,7 +88,7 @@ jobs:
   build-rustdesk-linux:
     needs: [generate-bridge-linux]
     name: build rustdesk linux ${{ matrix.job.target }}
-    runs-on: ${{ matrix.job.on }}
+    runs-on: iZj6ca916rxk43mz7jrqjmZ #${{ matrix.job.on }}
     strategy:
       fail-fast: false
       matrix:
@@ -654,7 +654,7 @@ jobs:
   build-appimage:
     name: Build appimage ${{ matrix.job.target }}
     needs: [build-rustdesk-linux]
-    runs-on: ubuntu-22.04
+    runs-on: iZj6ca916rxk43mz7jrqjmZ #ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -720,7 +720,7 @@ jobs:
     name: Build flatpak ${{ matrix.job.target }}${{ matrix.job.suffix }}
     needs:
       - build-rustdesk-linux
-    runs-on: ${{ matrix.job.on }}
+    runs-on: iZj6ca916rxk43mz7jrqjmZ #${{ matrix.job.on }}
     strategy:
       fail-fast: false
       matrix:
@@ -809,7 +809,7 @@ jobs:
 
   deploy:
     needs: [build-rustdesk-linux,build-flatpak,build-appimage]
-    runs-on: ubuntu-latest
+    runs-on: iZj6ca916rxk43mz7jrqjmZ #ubuntu-latest
     steps:
 
       - name: Set rdgen value
