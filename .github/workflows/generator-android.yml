@@ -211,28 +211,11 @@ jobs:
 
       - name: Install vcpkg dependencies
         run: |
-          for ANDROID_TARGET in arm64-v8a armeabi-v7a x86_64; do
-            if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
-              find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
-                echo "$_1:"
-                echo "======"
-                cat "$_1"
-                echo "======"
-                echo ""
-              done
-              exit 1
-            fi
+          for TRIPLET in arm64-android armeabi-v7a x64-android; do
+            /opt/artifacts/vcpkg/vcpkg install --triplet=$TRIPLET
           done
         shell: bash
 
-      # 1. 补充：强制再装一次 ffmpeg，确保 vcpkg 没出错
-      - name: Ensure ffmpeg is installed for all Android triplets
-        run: |
-          /opt/artifacts/vcpkg/vcpkg install ffmpeg --triplet=arm64-android
-          /opt/artifacts/vcpkg/vcpkg install ffmpeg --triplet=armeabi-v7a
-          /opt/artifacts/vcpkg/vcpkg install ffmpeg --triplet=x64-android
-
-      # 2. 检查头文件是否存在，如不存在会直接 fail，便于排查
       - name: Check ffmpeg header files
         run: |
           test -f /opt/artifacts/vcpkg/installed/arm64-android/include/libavutil/attributes.h
