@@ -54,25 +54,21 @@ on:
         default: '{}'
         type: string
 
-
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  SCITER_RUST_VERSION: "1.75"
+  RUST_VERSION: "1.75"
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
-  # for arm64 linux because official Dart SDK does not work
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
@@ -80,37 +76,12 @@ env:
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
-  generate-bridge-linux:
-    uses: ./.github/workflows/bridge.yml
-    with:
-      version: ${{ fromJson(inputs.extras).version }}
-
   build-rustdesk-android-universal:
     name: Build RustDesk Android Universal APK
     runs-on: ubuntu-22.04
     env:
-      SCITER_RUST_VERSION: "1.75"
-      RUST_VERSION: "1.75"
-      CARGO_NDK_VERSION: "3.1.2"
-      SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
-      SCITER_NASM_DEBVERSION: "2.14-1"
-      LLVM_VERSION: "15.0.6"
-      FLUTTER_VERSION: "3.24.5"
-      ANDROID_FLUTTER_VERSION: "3.24.5"
-      FLUTTER_ELINUX_VERSION: "3.16.9"
-      TAG_NAME: "${{ inputs.upload-tag }}"
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
-      VERSION: "${{ fromJson(inputs.extras).version }}"
-      NDK_VERSION: "r27c"
-      ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
-      MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
-      UPLOAD_ARTIFACT: 'true'
-      SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
-      STATUS_URL: "${{ secrets.GENURL }}/updategh"
       reltype: release
       suffix: ""
-
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -169,7 +140,7 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-      - name: Apply Flutter Patch
+      - name: Patch flutter
         run: |
           cd $(dirname $(dirname $(which flutter)))
           if [[ "${{ env.ANDROID_FLUTTER_VERSION }}" == "3.24.5" ]]; then
@@ -195,7 +166,7 @@ jobs:
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          cd flutter  # 确保切换到包含 pubspec.yaml 的目录
+          cd flutter
           flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64
           mkdir -p ../signed-apk
           mv build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk ../signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
@@ -244,7 +215,3 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           files: |
             signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
-
-
-
-
