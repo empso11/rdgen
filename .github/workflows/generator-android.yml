@@ -1,8 +1,17 @@
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
+
 on: 
   workflow_dispatch:
     inputs:
+      use_self_hosted:
+        description: 'Use self-hosted runner? 选择 true 用你的自托管服务器，否则用 GitHub 云端官方runner'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
       server:
         description: 'Rendezvous Server'
         required: true
@@ -76,8 +85,10 @@ jobs:
   build-rustdesk-android:
     name: build rustdesk android apk (universal)
     needs: [generate-bridge-linux]
-    runs-on: ubuntu-24.04
+    # 下面这行自动切换运行器，如果选择 true 就用你的自托管服务器，否则用 GitHub 官方云端
+    runs-on: ${{ inputs.use_self_hosted == 'true' && fromJson('["self-hosted", "iZj6ceznxq2midd5osbrcgZ"]') || 'ubuntu-24.04' }}
     steps:
+      # ---------- 环境准备 ----------
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -152,6 +163,7 @@ jobs:
                tree \
                wget
 
+      # ---------- 代码检出 ----------
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
@@ -167,6 +179,7 @@ jobs:
           repository: rustdesk/rustdesk
           submodules: recursive
 
+      # ---------- Flutter & NDK ----------
       - name: Install flutter
         uses: subosito/flutter-action@v2
         with:
@@ -185,6 +198,7 @@ jobs:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: true
 
+      # ---------- vcpkg ----------
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
         with:
@@ -201,6 +215,9 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
 
+      - name: Set vcpkg curl timeout (加大超时，防止拉包超时)
+        run: echo "VCPKG_CURL_TIMEOUT=600" >> $GITHUB_ENV
+
       - name: Install vcpkg dependencies (only supported triplets)
         run: |
           for TRIPLET in arm64-android armeabi-v7a x64-android; do
@@ -214,12 +231,14 @@ jobs:
           test -f /opt/artifacts/vcpkg/installed/armeabi-v7a/include/libavutil/attributes.h
           test -f /opt/artifacts/vcpkg/installed/x64-android/include/libavutil/attributes.h
 
+      # ---------- 还原 bridge 文件 ----------
       - name: Restore bridge files
         uses: actions/download-artifact@v4
         with:
           name: bridge-artifact
           path: ./
 
+      # ---------- Rust 工具链 ----------
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
@@ -231,11 +250,7 @@ jobs:
           prefix-key: rustdesk-lib-cache-android
           key: universal
 
-      ############################################################
-      # ----------- ICONS, PATCHES, PARAMETERS, CUSTOM STEPS -----
-      ############################################################
-
-      # 1. icon 替换
+      # ---------- ICON、参数、补丁 ----------
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
@@ -258,8 +273,7 @@ jobs:
           convert ./res/128x128.png -resize 200% ./res/128x128@2x.png
           cp ./src/ui.rs ./src/ui.rs.bak || true
 
-      # 2. 参数替换
-      - name: 替换 Rendezvous Server / Public Key / API Server
+      - name: 参数替换 - Rendezvous Server / Public Key / API Server
         run: |
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
@@ -273,23 +287,19 @@ jobs:
           sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./Cargo.toml
           sed -i -e 's|RustDesk|${{ inputs.appname }}|g' ./libs/hbb_common/src/config.rs
 
-      # 3. Patch/补丁支持（举例，按需加）
+      # 补丁举例（如有补丁则用，没有可以注释掉）
       - name: 应用自定义补丁
         if: ${{ fromJson(inputs.extras).patch_enable == 'true' }}
         run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/custom.diff
           git apply custom.diff
 
-      # 4. 其它自定义参数、链接替换等
       - name: 替换主页链接
         if: ${{ fromJson(inputs.extras).urlLink != 'https://rustdesk.com' }}
         run: |
           sed -i -e "s|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g" ./flutter/lib/common.dart
 
-      ############################################################
-      # ----------- BUILD JNI LIBS FOR UNIVERSAL APK -------------
-      ############################################################
-
+      # ---------- JNI so 构建 ----------
       - name: Build rustdesk lib (all arch)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -316,10 +326,7 @@ jobs:
 
           echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
 
-      ############################################################
-      # ----------- UNIVERSAL APK BUILD --------------------------
-      ############################################################
-
+      # ---------- APK 打包 ----------
       - name: Build rustdesk (universal)
         shell: bash
         env:
@@ -334,10 +341,7 @@ jobs:
           popd
           mkdir -p signed-apk; mv ./${{ inputs.filename }}-universal.apk ./signed-apk/
 
-      ############################################################
-      # ----------- SIGN, UPLOAD, REPORT STATUS, ERROR HANDLING --
-      ############################################################
-
+      # ---------- 签名、上传、上报 ----------
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
@@ -365,13 +369,13 @@ jobs:
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-universal.apk" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl --retry 5 --retry-delay 5 -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-universal.apk" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-universal.apk" ${{ inputs.apiServer }}/api/save_custom_client
+          curl --retry 5 --retry-delay 5 -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-universal.apk" ${{ inputs.apiServer }}/api/save_custom_client
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
