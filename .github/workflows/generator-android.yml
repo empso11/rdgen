@@ -1,6 +1,6 @@
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
-on: 
+on:
   workflow_dispatch:
     inputs:
       server:
@@ -19,79 +19,63 @@ on:
         default: ''
         type: string
       custom:
-        description: "Custom JSON"
+        description: 'Custom JSON'
         required: true
         default: ''
         type: string
       uuid:
-        description: "uuid of request"
+        description: 'uuid of request'
         required: true
         default: ''
         type: string
       iconlink:
-        description: "icon link"
+        description: 'icon link'
         required: false
         default: 'false'
         type: string
       logolink:
-        description: "logo link"
+        description: 'logo link'
         required: false
         default: 'false'
         type: string
       appname:
-        description: "app name"
+        description: 'app name'
         required: true
         default: 'rustdesk'
         type: string
       filename:
-        description: "Filename"
+        description: 'Filename'
         required: true
         default: 'rustdesk'
         type: string
       extras:
-        description: "extra inputs in json"
+        description: 'extra inputs in json'
         required: true
         default: '{}'
         type: string
 
-
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  CARGO_NDK_VERSION: "3.1.2"
-  SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
-  SCITER_NASM_DEBVERSION: "2.14-1"
-  LLVM_VERSION: "15.0.6"
-  FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
-  # for arm64 linux because official Dart SDK does not work
-  FLUTTER_ELINUX_VERSION: "3.16.9"
-  TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
-  VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
-  VERSION: "${{ fromJson(inputs.extras).version }}"
-  NDK_VERSION: "r27c"
-  #signing keys env variable checks
-  ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
-  MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
-  UPLOAD_ARTIFACT: 'true'
-  SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
-  STATUS_URL: "${{ secrets.GENURL }}/updategh"
+  SCITER_RUST_VERSION: "1.75"  # Rust版本兼容性设置
+  RUST_VERSION: "1.75"         # Rust主版本
+  CARGO_NDK_VERSION: "3.1.2"   # Cargo NDK版本
+  FLUTTER_VERSION: "3.24.5"    # Flutter版本
+  ANDROID_FLUTTER_VERSION: "3.24.5" # Android Flutter版本
+  FLUTTER_ELINUX_VERSION: "3.16.9"  # Flutter eLinux版本（备用）
+  TAG_NAME: "${{ inputs.upload-tag }}" # 上传标签
+  VERSION: "${{ fromJson(inputs.extras).version }}" # 动态版本号
+  NDK_VERSION: "r27c" # Android NDK版本
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite" # vcpkg二进制缓存源
+  VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d" # vcpkg版本
+  UPLOAD_ARTIFACT: 'true' # 是否上传构建产物
+  STATUS_URL: "${{ secrets.GENURL }}/updategh" # 状态上报URL
+  ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}" # Android签名密钥
+  MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}" # MacOS签名密钥
+  SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}" # 签名服务URL
 
 jobs:
-  generate-bridge-linux:
-    uses: ./.github/workflows/bridge.yml
-    with:
-      version: ${{ fromJson(inputs.extras).version }}
-
   build-rustdesk-android-universal:
     name: build rustdesk android universal apk
     runs-on: ubuntu-22.04
-    env:
-      reltype: release
-      x86_target: "" # can be ",android-x86"
-      suffix: ""
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -104,20 +88,20 @@ jobs:
           docker-images: true
           swap-storage: false
 
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
       - name: Report Status - Start
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "0% complete - Starting build"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Start: Initializing..."}'
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Install dependencies
         run: |
@@ -130,11 +114,10 @@ jobs:
                git \
                g++ \
                g++-multilib \
-               imagemagick \
                libayatana-appindicator3-dev \
                libasound2-dev \
                libc6-dev \
-               libclang-dev \
+               libclang-11-dev \
                libunwind-dev \
                libgstreamer1.0-dev \
                libgstreamer-plugins-base1.0-dev \
@@ -142,19 +125,26 @@ jobs:
                libpam0g-dev \
                libpulse-dev \
                libva-dev \
-               libvdpau-dev \
                libxcb-randr0-dev \
                libxcb-shape0-dev \
                libxcb-xfixes0-dev \
                libxdo-dev \
                libxfixes-dev \
-               llvm-dev \
+               llvm-11-dev \
                nasm \
                ninja-build \
                openjdk-17-jdk-headless \
                pkg-config \
                tree \
                wget
+
+      - name: Report Status - Dependencies Installed
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "10%: Dependencies installed"}'
 
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -167,42 +157,37 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-      - name: Apply Flutter Patch
-        run: |
-          cd $(dirname $(dirname $(which flutter)))
-          if [[ -f "${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff" ]]; then
-            git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff || echo "Patch failed to apply"
-          else
-            echo "Patch file not found, skipping"
-          fi
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
 
-      - name: Report Status - Dependencies Installed
+      - name: Download Rustdesk library from Artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.aarch64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
+
+      - name: Download Rustdesk library from Artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.armv7-linux-androideabi
+          path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
+
+      - name: Download Rustdesk library from Artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.x86_64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/x86_64
+
+      - name: Report Status - Preparing Build
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete - Dependencies installed"}'
-
-      # 确保生成 bridge 文件
-      - name: Generate bridge files
-        run: |
-          mkdir -p ./bridge-files
-          echo "Bridge content placeholder" > ./bridge-files/bridge.txt
-
-      # 上传 bridge-artifact
-      - name: Upload bridge artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: bridge-artifact
-          path: ./bridge-files/
-
-      # 下载 bridge-artifact
-      - name: Download bridge artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: bridge-artifact
-          path: ./downloaded-bridge-files/
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "30%: Preparing build"}'
 
       - name: Build rustdesk
         shell: bash
@@ -210,8 +195,6 @@ jobs:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
-          # temporary use debug sign config
-          sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
           mv ./flutter/android/app/src/main/jniLibs/arm64-v8a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
           cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
           mv ./flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
@@ -220,10 +203,10 @@ jobs:
           cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
           # build flutter
           pushd flutter
-          flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64${{ env.x86_target }}
+          flutter build apk "--release" --target-platform android-arm64,android-arm,android-x64
           popd
           mkdir -p signed-apk
-          mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+          mv ./flutter/build/app/outputs/flutter-apk/app-release.apk signed-apk/rustdesk-${{ env.VERSION }}-universal.apk
 
       - name: Report Status - Build Complete
         uses: fjogeleit/http-request-action@v1
@@ -231,7 +214,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "75% complete - Build complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "75%: Build complete"}'
 
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
@@ -244,16 +227,34 @@ jobs:
           keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Report Status - APK Signed
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "90%: APK signed"}'
+
+      - name: Upload Artifacts
+        if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/upload-artifact@master
+        with:
+          name: rustdesk-${{ env.VERSION }}.apk
+          path: ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
+
+      - name: Publish signed apk package
+        if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: true
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
+
       - name: Report Status - Success
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "100% complete - Success"}'
-
-
-
-
-
-
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
