@@ -1,7 +1,7 @@
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
 
-on: 
+on:
   workflow_dispatch:
     inputs:
       server:
@@ -80,7 +80,8 @@ jobs:
     needs: [generate-bridge-linux]
     runs-on:
       - self-hosted
-      - iZj6ceznxq2midd5osbrcgZ
+      - iZj6cgpcst574jrl4l0i8xZ
+
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
