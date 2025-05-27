@@ -225,6 +225,21 @@ jobs:
           done
         shell: bash
 
+      # 1. 补充：强制再装一次 ffmpeg，确保 vcpkg 没出错
+      - name: Ensure ffmpeg is installed for all Android triplets
+        run: |
+          /opt/artifacts/vcpkg/vcpkg install ffmpeg:arm64-android
+          /opt/artifacts/vcpkg/vcpkg install ffmpeg:armeabi-v7a
+          /opt/artifacts/vcpkg/vcpkg install ffmpeg:x64-android
+
+      # 2. 检查头文件是否存在，如不存在会直接 fail，便于排查
+      - name: Check ffmpeg header files
+        run: |
+          test -f /opt/artifacts/vcpkg/installed/arm64-android/include/libavutil/attributes.h
+          test -f /opt/artifacts/vcpkg/installed/arm64-android/include/libavcodec/avcodec.h
+          test -f /opt/artifacts/vcpkg/installed/armeabi-v7a/include/libavutil/attributes.h
+          test -f /opt/artifacts/vcpkg/installed/x64-android/include/libavutil/attributes.h
+
       - name: Restore bridge files
         uses: actions/download-artifact@master
         with:
