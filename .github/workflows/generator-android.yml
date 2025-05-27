@@ -184,17 +184,20 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete - Dependencies installed"}'
 
-      - name: Restore bridge files
+      # 确保生成 bridge 文件
+      - name: Generate bridge files
         run: |
           mkdir -p ./bridge-files
           echo "Bridge content placeholder" > ./bridge-files/bridge.txt
 
+      # 上传 bridge-artifact
       - name: Upload bridge artifact
         uses: actions/upload-artifact@v3
         with:
           name: bridge-artifact
           path: ./bridge-files/
 
+      # 下载 bridge-artifact
       - name: Download bridge artifact
         uses: actions/download-artifact@v3
         with:
@@ -248,6 +251,7 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "100% complete - Success"}'
+
 
 
 
