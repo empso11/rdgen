@@ -97,31 +97,12 @@ jobs:
           docker-images: true
           swap-storage: false
 
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v6
+      - name: Cache apt packages
+        id: cache-apt
+        uses: actions/cache@v4
         with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: Set rdgen value
-        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-        run: |
-          echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
-
-      - name: Set rdgen value
-        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
-        run: |
-          echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $GITHUB_ENV
-
-      - name: Report Status
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-v3
 
       - name: Install dependencies
         run: |
@@ -159,6 +140,20 @@ jobs:
                pkg-config \
                tree \
                wget
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: /opt/artifacts/vcpkg
+          key: vcpkg-${{ env.VCPKG_COMMIT_ID }}
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            flutter/.dart_tool
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
@@ -200,15 +195,6 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
-      - name: Report Status
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
-
       - name: Install vcpkg dependencies for all android abis
         run: |
           ./flutter/build_android_deps.sh "arm64-v8a"
@@ -221,6 +207,15 @@ jobs:
           name: bridge-artifact
           path: ./
 
+      - name: Cache Rust target and registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-target-${{ env.VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
@@ -230,7 +225,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: rustdesk-lib-cache-android
-          key: universal
+          key: ${{ runner.os }}-cargo-${{ env.VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
