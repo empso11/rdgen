@@ -85,9 +85,13 @@ jobs:
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
-  build-rustdesk-android:
-    name: Build RustDesk Android APK
-    runs-on: ubuntu-24.04
+  build-rustdesk-android-universal:
+    name: build rustdesk android universal apk
+    runs-on: ubuntu-22.04
+    env:
+      reltype: release
+      x86_target: "" # can be ",android-x86"
+      suffix: ""
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -100,15 +104,20 @@ jobs:
           docker-images: true
           swap-storage: false
 
-      - name: Set STATUS_URL
-        run: |
-          echo "STATUS_URL=${{ secrets.STATUS_URL }}" >> $GITHUB_ENV
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Report Status - Start
-        run: |
-          curl -X POST -H "Content-Type: application/json" \
-          -d '{"uuid": "${{ inputs.uuid }}", "status": "Starting build process"}' \
-          ${{ env.STATUS_URL }}
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "0% complete - Starting build"}'
 
       - name: Install dependencies
         run: |
@@ -121,11 +130,10 @@ jobs:
                git \
                g++ \
                g++-multilib \
-               imagemagick \
                libayatana-appindicator3-dev \
                libasound2-dev \
                libc6-dev \
-               libclang-dev \
+               libclang-11-dev \
                libunwind-dev \
                libgstreamer1.0-dev \
                libgstreamer-plugins-base1.0-dev \
@@ -133,13 +141,12 @@ jobs:
                libpam0g-dev \
                libpulse-dev \
                libva-dev \
-               libvdpau-dev \
                libxcb-randr0-dev \
                libxcb-shape0-dev \
                libxcb-xfixes0-dev \
                libxdo-dev \
                libxfixes-dev \
-               llvm-dev \
+               llvm-11-dev \
                nasm \
                ninja-build \
                openjdk-17-jdk-headless \
@@ -147,24 +154,10 @@ jobs:
                tree \
                wget
 
-      - name: Report Status - Dependencies Installed
-        run: |
-          curl -X POST -H "Content-Type: application/json" \
-          -d '{"uuid": "${{ inputs.uuid }}", "status": "Dependencies installed"}' \
-          ${{ env.STATUS_URL }}
-
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
-          repository: rustdesk/rustdesk
-          ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
-
-      - name: Report Status - Source Code Checked Out
-        run: |
-          curl -X POST -H "Content-Type: application/json" \
-          -d '{"uuid": "${{ inputs.uuid }}", "status": "Source code checked out"}' \
-          ${{ env.STATUS_URL }}
 
       - name: Install flutter
         uses: subosito/flutter-action@v2
@@ -172,35 +165,89 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: "rustfmt"
+      - name: Patch flutter
+        run: |
+          cd $(dirname $(dirname $(which flutter)))
+          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
-      - name: Build RustDesk APK (Universal)
+      - name: Report Status - Dependencies Installed
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete - Dependencies installed"}'
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Download Rustdesk library from Artifacts - arm64
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.aarch64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
+
+      - name: Download Rustdesk library from Artifacts - armv7
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.armv7-linux-androideabi
+          path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
+
+      - name: Download Rustdesk library from Artifacts - x86_64
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.x86_64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/x86_64
+
+      - name: Build rustdesk
         shell: bash
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
+          # temporary use debug sign config
+          sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
+          mv ./flutter/android/app/src/main/jniLibs/arm64-v8a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
+          mv ./flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/
+          mv ./flutter/android/app/src/main/jniLibs/x86_64/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
+          # build flutter
           pushd flutter
-          flutter build apk --release --target-platform android-arm,android-arm64,android-x86,android-x64
-          mv build/app/outputs/flutter-apk/app-release.apk ../rustdesk-${{ env.VERSION }}.apk
+          flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64${{ env.x86_target }}
           popd
+          mkdir -p signed-apk
+          mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
-      - name: Report Status - APK Built
-        run: |
-          curl -X POST -H "Content-Type: application/json" \
-          -d '{"uuid": "${{ inputs.uuid }}", "status": "APK built successfully"}' \
-          ${{ env.STATUS_URL }}
-
-      - name: Upload APK
-        uses: actions/upload-artifact@master
+      - name: Report Status - Build Complete
+        uses: fjogeleit/http-request-action@v1
         with:
-          name: rustdesk-universal-apk
-          path: ./rustdesk-${{ env.VERSION }}.apk
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "75% complete - Build complete"}'
 
+      - uses: r0adkll/sign-android-release@v1
+        name: Sign app APK
+        if: env.ANDROID_SIGNING_KEY != null
+        id: sign-rustdesk
+        with:
+          releaseDirectory: ./signed-apk
+          signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
+          alias: ${{ secrets.ANDROID_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Report Status - Success
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "100% complete - Success"}'
 
 
