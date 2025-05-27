@@ -121,7 +121,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 5%"}'
 
       - name: Install dependencies
         run: |
@@ -207,7 +207,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 15%"}'
 
       - name: Install vcpkg dependencies
         run: |
@@ -382,7 +382,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "35% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 35%"}'
 
       - name: replace flutter icons
         if: ${{ inputs.iconlink != 'false' }}
@@ -449,7 +449,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "75% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 75%"}'
       
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK

@@ -124,7 +124,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 5%"}'
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
@@ -243,7 +243,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "10% complete"}'   
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 10%"}'   
           
       - name: Install build runtime
         run: |
@@ -473,7 +473,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 15%"}'
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
@@ -481,7 +481,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "20% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 20%"}'
 
       - name: Restore bridge files
         uses: actions/download-artifact@master
@@ -517,7 +517,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
 
       - name: Create MacOS directory structure
         run: |
@@ -545,7 +545,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "50% complete, this step takes about 5 minutes, be patient."}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 50%, 此步骤大约需要 5 分钟，请耐心等待."}'
       
       - name: Install rcodesign tool
         if: env.MACOS_P12_BASE64 != null
@@ -573,7 +573,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "70% complete, this step takes about 5 minutes, be patient."}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 70%, 此步骤大约需要 5 分钟，请耐心等待."}'
   
       - name: Show version information (Rust, cargo, Clang)
         shell: bash
@@ -622,7 +622,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "85% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 85%"}'
 
       - name: Sign macOS app bundle
         if: env.MACOS_P12_BASE64 != ''

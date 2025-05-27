@@ -225,9 +225,9 @@ def generator_view(request):
             response = requests.post(url, json=data, headers=headers)
             print(response)
             if response.status_code == 204:
-                return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
+                return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"正在启动编译器...请等待", 'platform':platform})
             else:
-                return JsonResponse({"error": "Something went wrong"})
+                return JsonResponse({"error": "出了点问题"})
     else:
         form = GenerateForm()
     #return render(request, 'maintenance.html')

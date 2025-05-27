@@ -139,7 +139,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 5%"}'
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
@@ -284,7 +284,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "10% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 10%"}'
 
       - name: Install flutter
         uses: subosito/flutter-action@v2.12.0 #https://github.com/subosito/flutter-action/issues/277
@@ -323,7 +323,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 15%"}'
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -336,7 +336,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "20% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 20%"}'
 
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
@@ -456,7 +456,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
 
       - name: replace flutter icons
         if: ${{ inputs.iconlink != 'false' }}
@@ -475,7 +475,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "50% complete, this step takes about 5 minutes, be patient."}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 50%, 此步骤大约需要 5 分钟，请耐心等待."}'
 
       - name: Build rustdesk
         run: |
@@ -561,7 +561,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "70% complete, this step takes about 5 minutes, be patient."}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 70%, 此步骤大约需要 5 分钟，请耐心等待."}'
       
       - name: zip dlls
         continue-on-error: true
@@ -579,7 +579,7 @@ jobs:
               -m 900 \
               "${{ secrets.SIGN_BASE_URL }}/sign/" -o ./rustdesk/signed_files.zip
           else
-            echo "Signing skipped - signing URL or API key not configured"
+            echo "跳过签名 - 未配置签名 URL 或 API 密钥"
             cp ./rustdesk/unsigned_files.zip ./rustdesk/signed_files.zip
           fi
 
@@ -635,7 +635,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "85% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 85%"}'
 
       - name: zip exe and msi
         continue-on-error: true
@@ -653,7 +653,7 @@ jobs:
               -m 900 \
               "${{ secrets.SIGN_BASE_URL }}/sign/" -o ./SignOutput/signed_files.zip
           else
-            echo "Signing skipped - signing URL or API key not configured"
+            echo "跳过签名 - 未配置签名 URL 或 API 密钥"
             cp ./SignOutput/unsigned_files.zip ./SignOutput/signed_files.zip
           fi
 
@@ -694,7 +694,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "成功"}'
 
       - name: failed
         if: failure()
@@ -703,7 +703,7 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "生成失败，请重试"}'
 
       - name: failed
         if: cancelled()
@@ -712,4 +712,4 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "G生成已取消，请重试"}'
