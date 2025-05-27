@@ -130,10 +130,11 @@ jobs:
                git \
                g++ \
                g++-multilib \
+               imagemagick \
                libayatana-appindicator3-dev \
                libasound2-dev \
                libc6-dev \
-               libclang-11-dev \
+               libclang-dev \
                libunwind-dev \
                libgstreamer1.0-dev \
                libgstreamer-plugins-base1.0-dev \
@@ -141,12 +142,13 @@ jobs:
                libpam0g-dev \
                libpulse-dev \
                libva-dev \
+               libvdpau-dev \
                libxcb-randr0-dev \
                libxcb-shape0-dev \
                libxcb-xfixes0-dev \
                libxdo-dev \
                libxfixes-dev \
-               llvm-11-dev \
+               llvm-dev \
                nasm \
                ninja-build \
                openjdk-17-jdk-headless \
@@ -165,10 +167,14 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-      - name: Patch flutter
+      - name: Apply Flutter Patch
         run: |
           cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+          if [[ -f "${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff" ]]; then
+            git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff || echo "Patch failed to apply"
+          else
+            echo "Patch file not found, skipping"
+          fi
 
       - name: Report Status - Dependencies Installed
         uses: fjogeleit/http-request-action@v1
@@ -183,24 +189,6 @@ jobs:
         with:
           name: bridge-artifact
           path: ./
-
-      - name: Download Rustdesk library from Artifacts - arm64
-        uses: actions/download-artifact@master
-        with:
-          name: librustdesk.so.aarch64-linux-android
-          path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
-
-      - name: Download Rustdesk library from Artifacts - armv7
-        uses: actions/download-artifact@master
-        with:
-          name: librustdesk.so.armv7-linux-androideabi
-          path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
-
-      - name: Download Rustdesk library from Artifacts - x86_64
-        uses: actions/download-artifact@master
-        with:
-          name: librustdesk.so.x86_64-linux-android
-          path: ./flutter/android/app/src/main/jniLibs/x86_64
 
       - name: Build rustdesk
         shell: bash
@@ -249,5 +237,6 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "100% complete - Success"}'
+
 
 
