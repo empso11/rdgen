@@ -76,15 +76,16 @@ env:
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
-  生成 bridge 库:
+  generate_bridge_linux:
+    name: 生成 bridge 库
     uses: ./.github/workflows/bridge.yml
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
-  构建安卓通用APK:
-    needs: [生成 bridge 库]
+  build_android_apk:
+    name: 构建安卓通用APK
+    needs: [generate_bridge_linux]
     runs-on: ubuntu-24.04
-    name: 安卓通用APK自动化生成
     steps:
       - name: 释放磁盘空间
         uses: jlumbroso/free-disk-space@main
@@ -199,12 +200,28 @@ jobs:
       - name: 安装 vcpkg 依赖
         run: |
           ./flutter/build_android_deps.sh arm64-v8a
+      - name: 进度上报（30%）
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 30%"}'
 
       - name: 恢复 bridge 产物
         uses: actions/download-artifact@master
         with:
           name: bridge-artifact
           path: ./
+      - name: 进度上报（35%）
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 35%"}'
 
       - name: 安装 Rust 工具链
         uses: dtolnay/rust-toolchain@v1
@@ -245,21 +262,10 @@ jobs:
           sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "../res/icon.png"' ./flutter/pubspec.yaml
           sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
-      - name: 进度上报（30%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 30%"}'
 
-      # ...此处保留你所有定制化的 sed、参数替换、appname等步骤，和你原workflow一致...
+      # 这里保留你的所有参数修改、补丁应用等shell步骤（如set server、change appname、change url、download link等）
+      # 你原来的所有shell、sed、wget、git apply等自定义逻辑都能加在此处
 
-      - name: 拉取Flutter依赖
-        run: |
-          cd flutter
-          flutter pub get
       - name: 进度上报（40%）
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
@@ -269,13 +275,11 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 40%"}'
 
-      - name: 构建Rust库
+      - name: 拉取Flutter依赖
         run: |
-          rustup target add aarch64-linux-android
-          cargo install cargo-ndk --version ${{ env.CARGO_NDK_VERSION }} --locked
-          ./flutter/ndk_arm64.sh
-          mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
-          cp ./target/aarch64-linux-android/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+          cd flutter
+          flutter pub get
+
       - name: 进度上报（50%）
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
@@ -285,13 +289,14 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 50%"}'
 
-      - name: 写入自定义配置
-        run: echo -n "${{ inputs.custom }}" > ./flutter/assets/custom.txt
-
-      - name: 构建通用安卓APK
+      - name: 构建Rust库
         run: |
-          cd flutter
-          flutter build apk --release
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --version ${{ env.CARGO_NDK_VERSION }} --locked
+          ./flutter/ndk_arm64.sh
+          mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
+          cp ./target/aarch64-linux-android/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+
       - name: 进度上报（60%）
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
@@ -300,6 +305,23 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 60%"}'
+
+      - name: 写入自定义配置
+        run: echo -n "${{ inputs.custom }}" > ./flutter/assets/custom.txt
+
+      - name: 构建通用安卓APK
+        run: |
+          cd flutter
+          flutter build apk --release
+
+      - name: 进度上报（80%）
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 80%"}'
 
       - name: APK签名
         uses: r0adkll/sign-android-release@v1
@@ -312,14 +334,6 @@ jobs:
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
         env:
           BUILD_TOOLS_VERSION: "30.0.2"
-      - name: 进度上报（80%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 80%"}'
 
       - name: 上传到 rdgen 服务器
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
