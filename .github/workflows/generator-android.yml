@@ -62,7 +62,7 @@ env:
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
@@ -70,6 +70,9 @@ env:
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
+  ANDROID_ALIAS: "${{ secrets.ANDROID_ALIAS }}"
+  ANDROID_KEY_STORE_PASSWORD: "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}"
+  ANDROID_KEY_PASSWORD: "${{ secrets.ANDROID_KEY_PASSWORD }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
@@ -80,16 +83,21 @@ jobs:
     runs-on: ubuntu-24.04
     name: 安卓通用APK自动化生成
     steps:
-      - name: "步骤1：检出代码（5%）"
+      - name: "步骤1（进度5%）：检出代码"
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: "进度上报：5%"
-        run: echo "进度5%：代码已检出"
+      - name: "进度上报（5%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 5%"}'
 
-      - name: "步骤2：环境准备（10%）"
+      - name: "步骤2（进度10%）：安装依赖"
         run: |
-          echo "进度10%：开始安装依赖"
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake curl gcc-multilib git g++ g++-multilib imagemagick \
@@ -99,37 +107,67 @@ jobs:
             libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev \
             libxfixes-dev llvm-dev nasm ninja-build openjdk-17-jdk-headless \
             pkg-config tree wget
-      - name: "进度上报：10%"
-        run: echo "进度10%：环境准备完成"
+      - name: "进度上报（10%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 10%"}'
 
-      - name: "步骤3：安装Flutter（15%）"
+      - name: "步骤3（进度15%）：安装Flutter"
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
-      - name: "进度上报：15%"
-        run: echo "进度15%：Flutter安装完成"
+      - name: "进度上报（15%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 15%"}'
 
-      - name: "步骤4：安装NDK工具链（20%）"
+      - name: "步骤4（进度20%）：安装NDK"
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: true
-      - name: "进度上报：20%"
-        run: echo "进度20%：NDK工具链准备完成"
+      - name: "进度上报（20%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 20%"}'
 
-      - name: "步骤5：设置环境变量（25%）"
+      - name: "步骤5（进度25%）：设置JAVA_HOME"
         run: echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-      - name: "进度上报：25%"
-        run: echo "进度25%：JAVA_HOME设置完成"
+      - name: "进度上报（25%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
 
-      - name: "步骤6：拉取Flutter依赖（30%）"
+      - name: "步骤6（进度30%）：拉取Flutter依赖"
         run: flutter pub get
-      - name: "进度上报：30%"
-        run: echo "进度30%：Flutter依赖拉取完成"
+      - name: "进度上报（30%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 30%"}'
 
-      - name: "步骤7：修改图标（35%）"
+      - name: "步骤7（进度35%）：修改图标"
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
@@ -139,19 +177,31 @@ jobs:
           flutter pub get
           dart run flutter_launcher_icons
           popd
-      - name: "进度上报：35%"
-        run: echo "进度35%：图标修改完成"
+      - name: "进度上报（35%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 35%"}'
 
-      - name: "步骤8：替换参数与定制（40%）"
+      - name: "步骤8（进度40%）：参数定制"
         shell: bash
         run: |
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
-      - name: "进度上报：40%"
-        run: echo "进度40%：定制参数应用完成"
+      - name: "进度上报（40%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 40%"}'
 
-      - name: "步骤9：应用定制应用名称与UI（45%）"
+      - name: "步骤9（进度45%）：定制App名称"
         if: inputs.appname != 'rustdesk'
         shell: bash
         run: |
@@ -159,43 +209,79 @@ jobs:
           sed -i 's|RustDesk|${{ inputs.appname }}|' ./flutter/android/app/src/main/res/values/strings.xml
           sed -i -e "s|title: 'RustDesk'|title: '${{ inputs.appname }}'|" ./flutter/lib/main.dart
           sed -i 's|android:label="RustDesk"|android:label="${{ inputs.appname }}"|' ./flutter/android/app/src/main/AndroidManifest.xml
-      - name: "进度上报：45%"
-        run: echo "进度45%：应用名称和UI定制完成"
+      - name: "进度上报（45%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 45%"}'
 
-      - name: "步骤10：写入自定义配置文件（50%）"
+      - name: "步骤10（进度50%）：写入自定义配置"
         run: echo -n "${{ inputs.custom }}" > ./flutter/assets/custom.txt
-      - name: "进度上报：50%"
-        run: echo "进度50%：自定义配置文件写入完成"
+      - name: "进度上报（50%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 50%"}'
 
-      - name: "步骤11：安装Rust工具链并依赖（55%）"
+      - name: "步骤11（进度55%）：Rust工具链"
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: "rustfmt"
-      - name: "进度上报：55%"
-        run: echo "进度55%：Rust工具链准备完成"
+      - name: "进度上报（55%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 55%"}'
 
-      - name: "步骤12：安装cargo-ndk（60%）"
+      - name: "步骤12（进度60%）：安装cargo-ndk"
         run: cargo install cargo-ndk --version ${{ env.CARGO_NDK_VERSION }} --locked
-      - name: "进度上报：60%"
-        run: echo "进度60%：cargo-ndk安装完成"
+      - name: "进度上报（60%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 60%"}'
 
-      - name: "步骤13：构建Rust库（65%）"
+      - name: "步骤13（进度65%）：构建Rust库"
         run: |
           rustup target add aarch64-linux-android
           cargo ndk -t arm64-v8a -o ./flutter/android/app/src/main/jniLibs build --release
-      - name: "进度上报：65%"
-        run: echo "进度65%：Rust库构建完成"
+      - name: "进度上报（65%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 65%"}'
 
-      - name: "步骤14：构建APK包（70%）"
+      - name: "步骤14（进度70%）：构建APK"
         run: |
           pushd flutter
           flutter build apk --release
           popd
-      - name: "进度上报：70%"
-        run: echo "进度70%：APK构建完成"
+      - name: "进度上报（70%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 70%"}'
 
-      - name: "步骤15：签名APK（75%）"
+      - name: "步骤15（进度75%）：签名APK"
         uses: r0adkll/sign-android-release@v1
         if: env.ANDROID_SIGNING_KEY != null
         with:
@@ -206,33 +292,72 @@ jobs:
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
         env:
           BUILD_TOOLS_VERSION: "30.0.2"
-      - name: "进度上报：75%"
-        run: echo "进度75%：APK签名完成"
+      - name: "进度上报（75%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 75%"}'
 
-      - name: "步骤16：上传APK到服务器（80%）"
+      - name: "步骤16（进度80%）：上传APK到服务器"
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flutter/build/app/outputs/flutter-apk/app-release.apk" "${{ env.STATUS_URL }}"
-      - name: "步骤16：上传APK到API（80%）"
+      - name: "步骤16（进度80%）：上传APK到API"
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flutter/build/app/outputs/flutter-apk/app-release.apk" "${{ inputs.apiServer }}/api/updategh"
-      - name: "进度上报：80%"
-        run: echo "进度80%：APK上传完成"
+      - name: "进度上报（80%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 80%"}'
 
-      - name: "步骤17：上传构建产物到Actions（90%）"
+      - name: "步骤17（进度90%）：上传构建产物到Actions"
         uses: actions/upload-artifact@v4
         with:
           name: 安卓APK
           path: ./flutter/build/app/outputs/flutter-apk/app-release.apk
-      - name: "进度上报：90%"
-        run: echo "进度90%：构建产物上传完成"
+      - name: "进度上报（90%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 90%"}'
 
-      - name: "步骤18：流程完成（100%）"
+      - name: "进度上报（100%）"
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 100%"}'
+
+      - name: "步骤18：流程完成"
         run: echo "进度100%：通用安卓APK生成流程全部完成！"
+
       - name: "失败回调"
         if: failure()
-        run: echo "流水线失败，生成失败，请重新尝试"
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "生成失败，请重新尝试"}'
+
       - name: "取消回调"
         if: cancelled()
-        run: echo "流水线已取消，生成失败，请重新尝试"
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已取消，请重新尝试"}'
