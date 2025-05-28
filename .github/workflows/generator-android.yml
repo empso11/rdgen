@@ -1,6 +1,6 @@
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
-on: 
+on:
   workflow_dispatch:
     inputs:
       server:
@@ -170,23 +170,25 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      - name: Download Rustdesk library from Artifacts (arm64)
-        uses: actions/download-artifact@v4
-        with:
-          name: librustdesk.so.aarch64-linux-android
-          path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
-
-      - name: Download Rustdesk library from Artifacts (armv7)
-        uses: actions/download-artifact@v4
-        with:
-          name: librustdesk.so.armv7-linux-androideabi
-          path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
-
-      - name: Download Rustdesk library from Artifacts (x86_64)
-        uses: actions/download-artifact@v4
-        with:
-          name: librustdesk.so.x86_64-linux-android
-          path: ./flutter/android/app/src/main/jniLibs/x86_64
+      # 直接本地编译所有 so 文件（不用再下载 artifact）
+      - name: Build Rust so files (aarch64, armv7, x86_64)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add x86_64-linux-android
+          cargo install cargo-ndk --version 3.1.2 --locked
+          ./flutter/ndk_arm64.sh
+          ./flutter/ndk_arm.sh
+          ./flutter/ndk_x64.sh
+          mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
+          mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
+          mkdir -p ./flutter/android/app/src/main/jniLibs/x86_64
+          cp ./target/aarch64-linux-android/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+          cp ./target/armv7-linux-androideabi/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
+          cp ./target/x86_64-linux-android/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
 
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
@@ -235,13 +237,9 @@ jobs:
         run: |
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
           sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
-          mv ./flutter/android/app/src/main/jniLibs/arm64-v8a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
           cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
-          mv ./flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
           cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/
-          mv ./flutter/android/app/src/main/jniLibs/x86_64/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
           cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
-          # build flutter
           pushd flutter
           flutter pub get
           flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64${{ env.x86_target }}
