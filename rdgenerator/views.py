@@ -276,7 +276,7 @@ def get_png(request):
 def create_github_run(myuuid):
     new_github_run = GithubRun(
         uuid=myuuid,
-        status="Starting generator...please wait"
+        status="正在启动编译程序...请等待"
     )
     new_github_run.save()
 
@@ -298,7 +298,7 @@ def resize_and_encode_icon(imagefile):
             img = Image.open(image_buffer)
             imgcopy = img.copy()
     except (IOError, OSError):
-        raise ValueError("Uploaded file is not a valid image format.")
+        raise ValueError("上传的文件不是有效的图像格式.")
 
     # Check if resizing is necessary
     if img.size[0] <= maxWidth:
@@ -392,4 +392,4 @@ def save_custom_client(request):
         for chunk in file.chunks():
             f.write(chunk)
 
-    return HttpResponse("File saved successfully!")
+    return HttpResponse("文件保存成功！")
