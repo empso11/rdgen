@@ -213,8 +213,20 @@ jobs:
 
       - name: Install vcpkg dependencies
         run: |
-          # 使用一个有效的 ANDROID_ABI 值，这里以 arm64-v8a 为例
-          export ANDROID_TARGET="arm64-v8a"
+          case ${{ matrix.job.target }} in
+            aarch64-linux-android)
+            ANDROID_TARGET=arm64-v8a
+            ;;
+            armv7-linux-androideabi)
+              ANDROID_TARGET=armeabi-v7a
+            ;;
+            x86_64-linux-android)
+              ANDROID_TARGET=x86_64
+            ;;
+            i686-linux-android)
+              ANDROID_TARGET=x86
+            ;;
+          esac
           if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
             find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
               echo "$_1:"
