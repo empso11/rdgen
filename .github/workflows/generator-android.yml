@@ -82,10 +82,14 @@ jobs:
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
-  build_android_apk:
-    name: 构建安卓通用APK
+  build_rustdesk_android_universal:
+    name: 构建 RustDesk 通用 APK
     needs: [generate_bridge_linux]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
+    env:
+      reltype: release
+      x86_target: "" # 可扩展 x86
+      suffix: ""
     steps:
       - name: 释放磁盘空间
         uses: jlumbroso/free-disk-space@main
@@ -105,14 +109,6 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: 设置 rdgen 上报地址
-        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-        run: echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
-
-      - name: 设置 api server 上报地址
-        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
-        run: echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $GITHUB_ENV
-
       - name: 进度上报（5%）
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
@@ -127,12 +123,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
                clang cmake curl gcc-multilib git g++ g++-multilib imagemagick \
-               libayatana-appindicator3-dev libasound2-dev libc6-dev libclang-dev \
+               libayatana-appindicator3-dev libasound2-dev libc6-dev libclang-11-dev \
                libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-               libgtk-3-dev libpam0g-dev libpulse-dev libva-dev libvdpau-dev \
-               libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev \
-               libxfixes-dev llvm-dev nasm ninja-build openjdk-17-jdk-headless \
-               pkg-config tree wget
+               libgtk-3-dev libpam0g-dev libpulse-dev libva-dev libxcb-randr0-dev \
+               libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev libxfixes-dev \
+               llvm-11-dev nasm ninja-build openjdk-17-jdk-headless pkg-config tree wget
       - name: 进度上报（10%）
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
@@ -165,88 +160,51 @@ jobs:
         continue-on-error: true
         run: |
           cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
-
-      - name: 安装 NDK
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: ${{ env.NDK_VERSION }}
-          add-to-path: true
-      - name: 进度上报（20%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 20%"}'
-
-      - name: 设置 vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgDirectory: /opt/artifacts/vcpkg
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
-      - name: 进度上报（25%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
-
-      - name: 安装 vcpkg 依赖
-        run: |
-          ./flutter/build_android_deps.sh arm64-v8a
-      - name: 进度上报（30%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 30%"}'
+          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff || true
 
       - name: 恢复 bridge 产物
         uses: actions/download-artifact@master
         with:
           name: bridge-artifact
           path: ./
-      - name: 进度上报（35%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 35%"}'
 
-      - name: 安装 Rust 工具链
-        uses: dtolnay/rust-toolchain@v1
+      - name: 下载 Rustdesk arm64 库
+        uses: actions/download-artifact@master
         with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: "rustfmt"
+          name: librustdesk.so.aarch64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
 
-      - uses: Swatinem/rust-cache@v2
+      - name: 下载 Rustdesk armv7 库
+        uses: actions/download-artifact@master
         with:
-          prefix-key: rustdesk-lib-cache-android
-          key: aarch64-linux-android
+          name: librustdesk.so.armv7-linux-androideabi
+          path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
+
+      - name: 下载 Rustdesk x86_64 库
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.x86_64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/x86_64
+
+      - name: 下载 Rustdesk x86 库（如有）
+        if: ${{ env.reltype == 'debug' }}
+        uses: actions/download-artifact@master
+        with:
+          name: librustdesk.so.i686-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/x86
 
       - name: 图标处理
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
-        shell: bash
         run: |
-          mv ./res/icon.ico ./res/icon.ico.bak
-          mv ./res/icon.png ./res/icon.png.bak
-          mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
+          mv ./res/icon.ico ./res/icon.ico.bak || true
+          mv ./res/icon.png ./res/icon.png.bak || true
+          mv ./res/tray-icon.ico ./res/tray-icon.ico.bak || true
           wget -O ./res/icon.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
-          mv ./res/32x32.png ./res/32x32.png.bak
-          mv ./res/64x64.png ./res/64x64.png.bak
-          mv ./res/128x128.png ./res/128x128.png.bak
-          mv ./res/128x128@2x.png ./res/128x128@2x.png.bak
+          mv ./res/32x32.png ./res/32x32.png.bak || true
+          mv ./res/64x64.png ./res/64x64.png.bak || true
+          mv ./res/128x128.png ./res/128x128.png.bak || true
+          mv ./res/128x128@2x.png ./res/128x128@2x.png.bak || true
           convert ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           convert ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/tray-icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
@@ -263,8 +221,7 @@ jobs:
           sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
 
-      # 这里保留你的所有参数修改、补丁应用等shell步骤（如set server、change appname、change url、download link等）
-      # 你原来的所有shell、sed、wget、git apply等自定义逻辑都能加在此处
+      # 这里保留你的所有参数修改、补丁应用等shell步骤
 
       - name: 进度上报（40%）
         uses: fjogeleit/http-request-action@v1
@@ -275,44 +232,28 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 40%"}'
 
-      - name: 拉取Flutter依赖
+      - name: Build rustdesk 通用 APK
+        shell: bash
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          cd flutter
-          flutter pub get
-
-      - name: 进度上报（50%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 50%"}'
-
-      - name: 构建Rust库
-        run: |
-          rustup target add aarch64-linux-android
-          cargo install cargo-ndk --version ${{ env.CARGO_NDK_VERSION }} --locked
-          ./flutter/ndk_arm64.sh
-          mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
-          cp ./target/aarch64-linux-android/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
-
-      - name: 进度上报（60%）
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 60%"}'
-
-      - name: 写入自定义配置
-        run: echo -n "${{ inputs.custom }}" > ./flutter/assets/custom.txt
-
-      - name: 构建通用安卓APK
-        run: |
-          cd flutter
-          flutter build apk --release
+          export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
+          sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
+          mv ./flutter/android/app/src/main/jniLibs/arm64-v8a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
+          mv ./flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/
+          mv ./flutter/android/app/src/main/jniLibs/x86_64/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
+          if [ "${{ env.reltype }}" = "debug" ]; then
+            mv ./flutter/android/app/src/main/jniLibs/x86/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86/librustdesk.so
+            cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86/
+          fi
+          pushd flutter
+          flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64${{ env.x86_target }}
+          popd
+          mkdir -p signed-apk
+          mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/${{ inputs.filename }}-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
       - name: 进度上报（80%）
         uses: fjogeleit/http-request-action@v1
@@ -323,29 +264,40 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 80%"}'
 
-      - name: APK签名
-        uses: r0adkll/sign-android-release@v1
+      - name: 设置签名工具版本
+        shell: bash
+        run: |
+          BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
+          echo "ANDROID_SIGN_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
+          echo Last build tool version is: $BUILD_TOOL_VERSION
+
+      - uses: r0adkll/sign-android-release@v1
+        name: 签名 APK
         if: env.ANDROID_SIGNING_KEY != null
+        id: sign-rustdesk
         with:
-          releaseDirectory: ./flutter/build/app/outputs/flutter-apk
+          releaseDirectory: ./signed-apk
           signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
           alias: ${{ secrets.ANDROID_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
         env:
-          BUILD_TOOLS_VERSION: "30.0.2"
+          BUILD_TOOLS_VERSION: ${{ env.ANDROID_SIGN_TOOL_VERSION }}
 
-      - name: 上传到 rdgen 服务器
-        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-        shell: bash
-        run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flutter/build/app/outputs/flutter-apk/app-release.apk" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+      - name: 进度上报（90%）
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 90%"}'
 
-      - name: 上传到 api 服务器
-        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
-        shell: bash
-        run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flutter/build/app/outputs/flutter-apk/app-release.apk" ${{ inputs.apiServer }}/api/save_custom_client
+      - name: 上传到Actions制品
+        uses: actions/upload-artifact@v4
+        with:
+          name: 通用安卓APK
+          path: ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
 
       - name: 进度上报（100%）
         uses: fjogeleit/http-request-action@v1
@@ -355,12 +307,6 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 100%"}'
-
-      - name: 上传到Actions制品
-        uses: actions/upload-artifact@v4
-        with:
-          name: 通用安卓APK
-          path: ./flutter/build/app/outputs/flutter-apk/app-release.apk
 
       - name: 失败回调
         if: failure()
