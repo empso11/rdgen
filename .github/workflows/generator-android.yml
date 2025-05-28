@@ -491,8 +491,8 @@ jobs:
             cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
             echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
             pushd flutter
-            flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm64 --split-per-abi
-            mv build/app/outputs/flutter-apk/app-arm64-v8a-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
+            flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm64,android-arm,android-x64,android-x86 --split-per-abi
+            mv build/app/outputs/flutter-apk/app-universal-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
             ;;
             armv7-linux-androideabi)
               mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
@@ -520,15 +520,6 @@ jobs:
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-x86 --split-per-abi
               mv build/app/outputs/flutter-apk/app-x86-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
-            ;;
-            universal)
-              mkdir -p ./flutter/android/app/src/main/jniLibs/universal
-              cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/universal/libc++_shared.so ./flutter/android/app/src/main/jniLibs/universal/
-              cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/universal/librustdesk.so
-              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
-              pushd flutter
-              flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm64,android-arm,android-x64,android-x86
-              mv build/app/outputs/flutter-apk/app-universal-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
             ;;
           esac
           popd
