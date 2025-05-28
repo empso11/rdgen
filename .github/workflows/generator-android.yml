@@ -133,7 +133,7 @@ jobs:
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
-          wget -O ./res/icon.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
+          wget -O ./res/icon.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
           convert ./res/icon.png -resize 256x256 ./res/icon-256.png
           pushd ./flutter
           flutter pub get
