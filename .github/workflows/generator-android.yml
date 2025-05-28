@@ -76,12 +76,34 @@ env:
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
+  generate_bridge_linux:
+    name: 生成 bridge 库
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: 构建 bridge
+        run: |
+          # 假设 bridge 的 Cargo.toml 在 native 目录，实际请按需改路径
+          cd native
+          cargo build --release
+          mkdir -p ${{ github.workspace }}/bridge_bin
+          cp target/release/*bridge*.so ${{ github.workspace }}/bridge_bin/
+      - name: 上传 bridge 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-artifact
+          path: bridge_bin
+
   build_rustdesk_android:
+    needs: [generate_bridge_linux]
     runs-on: ubuntu-22.04
     env:
       reltype: release
     steps:
-      - name: 检出源代码
+      - name: 检出代码
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -96,7 +118,6 @@ jobs:
         id: setup-ndk
         with:
           ndk-version: ${{ env.NDK_VERSION }}
-          add-to-path: true
 
       - name: 安装依赖
         run: |
@@ -142,17 +163,41 @@ jobs:
 
   build_rustdesk_android_universal:
     name: 构建 RustDesk 通用 APK
-    needs: [build_rustdesk_android]
+    needs: [generate_bridge_linux, build_rustdesk_android]
     runs-on: ubuntu-22.04
     env:
       reltype: release
       x86_target: ""
       suffix: ""
     steps:
-      - name: 检出源代码
+      - name: 检出代码
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: 下载 bridge 产物
+        uses: actions/download-artifact@v4
+        with:
+          name: bridge-artifact
+          path: ./flutter/bridge_bin
+
+      - name: 下载 Rustdesk arm64 库
+        uses: actions/download-artifact@v4
+        with:
+          name: librustdesk.so.aarch64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
+
+      - name: 下载 Rustdesk armv7 库
+        uses: actions/download-artifact@v4
+        with:
+          name: librustdesk.so.armv7-linux-androideabi
+          path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
+
+      - name: 下载 Rustdesk x86_64 库
+        uses: actions/download-artifact@v4
+        with:
+          name: librustdesk.so.x86_64-linux-android
+          path: ./flutter/android/app/src/main/jniLibs/x86_64
 
       - name: 安装依赖
         run: |
@@ -175,24 +220,6 @@ jobs:
         run: |
           cd $(dirname $(dirname $(which flutter)))
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff || true
-
-      - name: 下载 Rustdesk arm64 库
-        uses: actions/download-artifact@v4
-        with:
-          name: librustdesk.so.aarch64-linux-android
-          path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
-
-      - name: 下载 Rustdesk armv7 库
-        uses: actions/download-artifact@v4
-        with:
-          name: librustdesk.so.armv7-linux-androideabi
-          path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
-
-      - name: 下载 Rustdesk x86_64 库
-        uses: actions/download-artifact@v4
-        with:
-          name: librustdesk.so.x86_64-linux-android
-          path: ./flutter/android/app/src/main/jniLibs/x86_64
 
       - name: 图标处理
         if: ${{ inputs.iconlink != 'false' }}
