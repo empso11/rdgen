@@ -213,7 +213,10 @@ jobs:
 
       - name: Install vcpkg dependencies
         run: |
-          case "${{ matrix.job.target }}" in
+          # 如果你使用 matrix，请确保 matrix.job.target 有正确的值
+          # 如果没有，则可以设置一个默认值，例如 "universal"
+          TARGET="${{ matrix.job.target || 'universal' }}"
+          case "$TARGET" in
             aarch64-linux-android)
               ANDROID_TARGET=arm64-v8a
               ;;
@@ -226,8 +229,14 @@ jobs:
             i686-linux-android)
               ANDROID_TARGET=x86
               ;;
+            universal)
+              # 对于 universal 构建，你可以选择任一合法的架构用于依赖下载，
+              # 这里以 arm64-v8a 为默认示例
+              ANDROID_TARGET=arm64-v8a
+              ;;
             *)
-              echo "Unknown target" && exit 1
+              echo "Unknown target: $TARGET"
+              exit 1
               ;;
           esac
           echo "Using ANDROID_TARGET: ${ANDROID_TARGET}"
