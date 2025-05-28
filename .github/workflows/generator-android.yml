@@ -163,32 +163,32 @@ jobs:
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff || true
 
       - name: 恢复 bridge 产物
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: bridge-artifact
           path: ./
 
       - name: 下载 Rustdesk arm64 库
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: librustdesk.so.aarch64-linux-android
           path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
 
       - name: 下载 Rustdesk armv7 库
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: librustdesk.so.armv7-linux-androideabi
           path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
 
       - name: 下载 Rustdesk x86_64 库
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: librustdesk.so.x86_64-linux-android
           path: ./flutter/android/app/src/main/jniLibs/x86_64
 
       - name: 下载 Rustdesk x86 库（如有）
         if: ${{ env.reltype == 'debug' }}
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: librustdesk.so.i686-linux-android
           path: ./flutter/android/app/src/main/jniLibs/x86
@@ -221,7 +221,7 @@ jobs:
           sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
 
-      # 这里保留你的所有参数修改、补丁应用等shell步骤
+      # 你的参数修改、补丁、替换等 shell 步骤可插入这里
 
       - name: 进度上报（40%）
         uses: fjogeleit/http-request-action@v1
@@ -250,6 +250,7 @@ jobs:
             cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86/
           fi
           pushd flutter
+          flutter pub get
           flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64${{ env.x86_target }}
           popd
           mkdir -p signed-apk
