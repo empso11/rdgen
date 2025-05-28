@@ -213,10 +213,8 @@ jobs:
 
       - name: Install vcpkg dependencies
         run: |
-          # Determine android target string (这里仅保留常用目标，后续步骤统一构建 universal apk)
-          case "universal" in
-            *) ANDROID_TARGET="universal" ;;
-          esac
+          # 使用一个有效的 ANDROID_ABI 值，这里以 arm64-v8a 为例
+          export ANDROID_TARGET="arm64-v8a"
           if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
             find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
               echo "$_1:"
