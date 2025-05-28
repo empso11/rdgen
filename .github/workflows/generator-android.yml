@@ -152,11 +152,13 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
+      # Patch 步骤可选，建议暂时跳过，后续如需补丁请修复再用
       - name: Patch flutter
         continue-on-error: true
         run: |
           cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && \
+          git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff || echo "patch failed, but continue."
 
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
@@ -170,7 +172,7 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      # 直接本地编译所有 so 文件（不用再下载 artifact）
+      # 直接用 cargo-ndk，不用任何 .sh 脚本
       - name: Build Rust so files (aarch64, armv7, x86_64)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -180,15 +182,9 @@ jobs:
           rustup target add armv7-linux-androideabi
           rustup target add x86_64-linux-android
           cargo install cargo-ndk --version 3.1.2 --locked
-          ./flutter/ndk_arm64.sh
-          ./flutter/ndk_arm.sh
-          ./flutter/ndk_x64.sh
-          mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
-          mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
-          mkdir -p ./flutter/android/app/src/main/jniLibs/x86_64
-          cp ./target/aarch64-linux-android/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
-          cp ./target/armv7-linux-androideabi/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
-          cp ./target/x86_64-linux-android/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
+          cargo ndk -t arm64-v8a -o ./flutter/android/app/src/main/jniLibs/ build --release
+          cargo ndk -t armeabi-v7a -o ./flutter/android/app/src/main/jniLibs/ build --release
+          cargo ndk -t x86_64 -o ./flutter/android/app/src/main/jniLibs/ build --release
 
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
