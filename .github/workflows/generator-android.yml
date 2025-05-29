@@ -193,8 +193,9 @@ jobs:
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
-          repository: rustdesk/rustdesk
-          ref: refs/tags/${{ env.VERSION }}
+          repository: empso11/rustdesk
+          # ref: refs/tags/${{ env.VERSION }}
+          ref: refs/tags/master
           submodules: recursive
        
       - name: Checkout source code
