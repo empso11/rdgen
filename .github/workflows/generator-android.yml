@@ -82,6 +82,7 @@ env:
 jobs:
   generate-bridge-linux:
     uses: ./.github/workflows/bridge.yml
+    runs-on: self-hosted
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
