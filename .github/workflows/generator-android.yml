@@ -84,7 +84,6 @@ jobs:
     uses: ./.github/workflows/bridge.yml
     with:
       version: ${{ fromJson(inputs.extras).version }}
-      uuid: ${{ inputs.uuid }}
 
   build-rustdesk-android:
     needs: [generate-bridge-linux]
