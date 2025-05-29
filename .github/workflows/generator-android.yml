@@ -195,7 +195,7 @@ jobs:
         with:
           repository: empso11/rustdesk
           # ref: refs/tags/${{ env.VERSION }}
-          ref: refs/tags/master
+          ref: refs/releases/master
           submodules: recursive
        
       - name: Checkout source code
