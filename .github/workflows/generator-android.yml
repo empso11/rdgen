@@ -194,8 +194,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: empso11/rustdesk
-          # ref: refs/tags/${{ env.VERSION }}
-          ref: refs/releases/master
+          ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
        
       - name: Checkout source code

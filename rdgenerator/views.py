@@ -276,7 +276,7 @@ def get_png(request):
 def create_github_run(myuuid):
     new_github_run = GithubRun(
         uuid=myuuid,
-        status="正在启动编译程序...请等待"
+        status="已启动编译程序... 预计3分钟"
     )
     new_github_run.save()
 
