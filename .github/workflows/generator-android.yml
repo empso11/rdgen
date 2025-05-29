@@ -68,6 +68,9 @@ env:
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
+   # === 新增这两行（关键） ===
+  VCPKG_CURL_TIMEOUT: "120"
+  VCPKG_CURL_RETRIES: "3"
 
 jobs:
   generate-bridge-linux:
