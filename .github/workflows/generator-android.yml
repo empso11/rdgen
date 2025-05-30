@@ -710,7 +710,7 @@ jobs:
               target: aarch64-linux-android,
               # os: ubuntu-24.04,
               # os: self-hosted,
-              os: [self-hosted, Rc1],
+              os: [self-hosted, rc1],
               reltype: release,
               suffix: "",
             }
@@ -719,7 +719,7 @@ jobs:
               target: armv7-linux-androideabi,
               # os: ubuntu-24.04,
               # os: self-hosted,
-              os: [self-hosted, Rc2],
+              os: [self-hosted, rc2],
               reltype: release,
               suffix: "",
             }
@@ -728,7 +728,7 @@ jobs:
               target: x86_64-linux-android,
               # os: ubuntu-24.04,
               # os: self-hosted,
-              os: [self-hosted, Rc3],
+              os: [self-hosted, rc3],
               reltype: release,
               suffix: "",
             }
