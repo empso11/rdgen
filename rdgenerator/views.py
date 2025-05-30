@@ -33,9 +33,9 @@ def generator_view(request):
             urlLink = form.cleaned_data['urlLink']
             downloadLink = form.cleaned_data['downloadLink']
             if not server:
-                server = 'rs-ny.rustdesk.com' #default rustdesk server
+                server = 'rs-ny.rustdesk.com' #默认 rustdesk 服务器
             if not key:
-                key = 'OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=' #default rustdesk key
+                key = 'OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=' #默认 rustdesk 键
             if not apiServer:
                 apiServer = server+":21114"
             if not urlLink:
@@ -92,7 +92,7 @@ def generator_view(request):
                     iconfile = form.cleaned_data.get('iconbase64')
                 iconlink = save_png(iconfile,myuuid,full_url,"icon.png")
             except:
-                print("failed to get icon, using default")
+                print("f获取图标失败，使用默认")
                 iconlink = "false"
             try:
                 logofile = form.cleaned_data.get('logofile')
@@ -100,10 +100,10 @@ def generator_view(request):
                     logofile = form.cleaned_data.get('logobase64')
                 logolink = save_png(logofile,myuuid,full_url,"logo.png")
             except:
-                print("failed to get logo")
+                print("未能获取logo")
                 logolink = "false"
 
-            ###create the custom.txt json here and send in as inputs below
+            ###在此处创建 custom.txt json 并作为以下输入发送
             decodedCustom = {}
             if direction != "Both":
                 decodedCustom['conn-type'] = direction
@@ -168,7 +168,7 @@ def generator_view(request):
             base64_bytes = base64.b64encode(string_bytes)
             encodedCustom = base64_bytes.decode("ascii")
 
-            #github limits inputs to 10, so lump extras into one with json
+            #github 限制输入为 10 个，因此使用 json 将额外输入合并为一个
             extras = {}
             extras['genurl'] = _settings.GENURL
             extras['runasadmin'] = runasadmin
@@ -184,7 +184,7 @@ def generator_view(request):
             extras['compname'] = compname
             extra_input = json.dumps(extras)
 
-            ####from here run the github action, we need user, repo, access token.
+            ####从这里运行 github 操作，我们需要用户、repo、访问令牌。
             if platform == 'windows':
                 url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows.yml/dispatches' 
             elif platform == 'linux':
@@ -242,7 +242,7 @@ def check_for_file(request):
     status = gh_run.status
 
     #if file_exists:
-    if status == "Success":
+    if status == "成功":
         return render(request, 'generated.html', {'filename': filename, 'uuid':uuid, 'platform':platform})
     else:
         return render(request, 'waiting.html', {'filename':filename, 'uuid':uuid, 'status':status, 'platform':platform})
@@ -276,7 +276,7 @@ def get_png(request):
 def create_github_run(myuuid):
     new_github_run = GithubRun(
         uuid=myuuid,
-        status="已启动编译程序... 预计3分钟"
+        status="已启动编译程序... 请等待",
     )
     new_github_run.save()
 
@@ -300,7 +300,7 @@ def resize_and_encode_icon(imagefile):
     except (IOError, OSError):
         raise ValueError("上传的文件不是有效的图像格式.")
 
-    # Check if resizing is necessary
+    # 检查是否需要调整大小
     if img.size[0] <= maxWidth:
         with io.BytesIO() as image_buffer:
             imgcopy.save(image_buffer, format=imagefile.content_type.split('/')[1])
@@ -308,11 +308,11 @@ def resize_and_encode_icon(imagefile):
             return_image = ContentFile(image_buffer.read(), name=imagefile.name)
         return base64.b64encode(return_image.read())
 
-    # Calculate resized height based on aspect ratio
+    # 根据宽高比计算调整后的高度
     wpercent = (maxWidth / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(wpercent)))
 
-    # Resize the image while maintaining aspect ratio using LANCZOS resampling
+    # 使用 LANCZOS 重采样调整图像大小，同时保持纵横比
     imgcopy = imgcopy.resize((maxWidth, hsize), Image.Resampling.LANCZOS)
 
     with io.BytesIO() as resized_image_buffer:
@@ -321,16 +321,16 @@ def resize_and_encode_icon(imagefile):
 
         resized_imagefile = ContentFile(resized_image_buffer.read(), name=imagefile.name)
 
-    # Return the Base64 encoded representation of the resized image
+    # 返回调整大小后图像的 Base64 编码表示
     resized64 = base64.b64encode(resized_imagefile.read())
     #print(resized64)
     return resized64
  
-#the following is used when accessed from an external source, like the rustdesk api server
+#t以下内容用于从外部源访问，例如 rustdesk api 服务器
 def startgh(request):
     #print(request)
     data_ = json.loads(request.body)
-    ####from here run the github action, we need user, repo, access token.
+    ####从这里运行 github 操作，我们需要用户、repo、访问令牌。
     url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-'+data_.get('platform')+'.yml/dispatches'  
     data = {
         "ref":"master",
@@ -361,15 +361,15 @@ def save_png(file, uuid, domain, name):
     file_save_path = "png/%s/%s" % (uuid, name)
     Path("png/%s" % uuid).mkdir(parents=True, exist_ok=True)
 
-    if isinstance(file, str):  # Check if it's a base64 string
+    if isinstance(file, str):  # 检查是否为 base64 字符串
         try:
             header, encoded = file.split(';base64,')
             decoded_img = base64.b64decode(encoded)
-            file = ContentFile(decoded_img, name=name) # Create a file-like object
+            file = ContentFile(decoded_img, name=name) # 创建一个类似文件的对象
         except ValueError:
             print("Invalid base64 data")
-            return None  # Or handle the error as you see fit
-        except Exception as e:  # Catch general exceptions during decoding
+            return None  # 或者按照您认为合适的方式处理错误
+        except Exception as e:  # 捕获解码过程中的一般异常
             print(f"Error decoding base64: {e}")
             return None
         

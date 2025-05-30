@@ -25,13 +25,13 @@ class GenerateForm(forms.Form):
         ('settingsN', '是，禁用设置')
     ], initial='settingsY')
 
-    #Custom Server
-    serverIP = forms.CharField(label="Host", required=False)
-    apiServer = forms.CharField(label="API Server", required=False)
+    #自定义服务器
+    serverIP = forms.CharField(label="域名", required=False)
+    apiServer = forms.CharField(label="API服务器", required=False)
     key = forms.CharField(label="Key", required=False)
-    urlLink = forms.CharField(label="Custom URL for links", required=False)
-    downloadLink = forms.CharField(label="Custom URL for downloading new versions", required=False)
-    compname = forms.CharField(label="Company name",required=False)
+    urlLink = forms.CharField(label="自定义URL", required=False)
+    downloadLink = forms.CharField(label="用于下载新版本的自定义 URL", required=False)
+    compname = forms.CharField(label="公司名称",required=False)
 
     #Visual
     iconfile = forms.FileField(label="通过两者接受会话", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
