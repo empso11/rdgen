@@ -606,8 +606,8 @@
 
 
 
-name: Custom Android Client Generator
-run-name: Custom Android Client Generator
+name: 自定义 Android 客户端生成器
+run-name: 自定义 Android 客户端生成器
 on: 
   workflow_dispatch:
     inputs:
@@ -664,23 +664,23 @@ on:
 
 
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, 1.78 版的 ABI 也发生了变化，导致我们的 sciter 版本无法工作, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  RUST_VERSION: "1.75" # sciter 在 m1 1.78 上失败，原因是 https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   ANDROID_FLUTTER_VERSION: "3.24.5" 
-  # for arm64 linux because official Dart SDK does not work
+  # 适用于 arm64 linux，因为官方 Dart SDK 无法工作
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
+  # vcpkg版本：2024.07.12
   VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
+  #签名密钥环境变量检查
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
@@ -698,7 +698,7 @@ jobs:
 
   build-rustdesk-android:
     needs: [generate-bridge-linux]
-    name: build rustdesk android apk ${{ matrix.job.target }}
+    name: 生成Android  ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
@@ -729,7 +729,7 @@ jobs:
               suffix: "",
             }
     steps:
-      - name: Free Disk Space (Ubuntu)
+      - name: 可用磁盘空间（Ubuntu）
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
@@ -739,7 +739,7 @@ jobs:
           large-packages: false
           docker-images: true
           swap-storage: false
-      - name: Restore vcpkg cache  #缓存
+      - name: 恢复 vcpkg 缓存  #缓存
         uses: actions/cache@v3
         with:
           path: |
@@ -747,33 +747,33 @@ jobs:
             /opt/artifacts/vcpkg/installed
           key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
-      - name: Export GitHub Actions cache environment variables
+      - name: 导出 GitHub Actions 缓存环境变量
         uses: actions/github-script@v6
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Set rdgen value
+      - name: 设置 rdgen 值
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         run: |
           echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
 
-      - name: Set rdgen value
+      - name: 设置 rdgen 值
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
         run: |
           echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $GITHUB_ENV
 
-      - name: Report Status
+      - name: 报告状态 5%
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  5%"}'
 
-      - name: Install dependencies
+      - name: 安装依赖项
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -811,33 +811,50 @@ jobs:
                wget \
                autoconf
 
-      - name: Checkout source code
+      - name: 检出源代码
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
           repository: empso11/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
+
+      - name: 报告状态 10%
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  10%"}'
        
-      - name: Checkout source code
+      - name: 检出源代码
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
           repository: empso11/rustdesk
           submodules: recursive
 
-      - name: Install flutter
+      - name: 安装 flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-      - name: Patch flutter
+      - name: 修补 flutter
         continue-on-error: true
         run: |
           cd $(dirname $(dirname $(which flutter)))
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
   
+      - name: 报告状态 15%
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  15%"}'
 
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
@@ -845,23 +862,23 @@ jobs:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: true
 
-      - name: Setup vcpkg with Github Actions binary cache
+      - name: 使用 Github Actions 二进制缓存设置 vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: /opt/artifacts/vcpkg
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
-      - name: Report Status
+      - name: 报告状态 25
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
 
-      - name: Install vcpkg dependencies
+      - name: 安装 vcpkg 依赖项
         run: |
           case ${{ matrix.job.target }} in
             aarch64-linux-android)
@@ -888,7 +905,7 @@ jobs:
             exit 1
           fi
         shell: bash
-      - name: Save vcpkg cache
+      - name: 保存 vcpkg 缓存
         uses: actions/cache@v3
         with:
           path: |
@@ -896,13 +913,22 @@ jobs:
             /opt/artifacts/vcpkg/installed
           key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
-      - name: Restore bridge files
+      - name: 报告状态 45
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 45%"}'
+
+      - name: 恢复 Bridge 文件
         uses: actions/download-artifact@master
         with:
           name: bridge-artifact
           path: ./
 
-      - name: Install Rust toolchain
+      - name: 安装 Rust 工具链
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -914,7 +940,7 @@ jobs:
           key: ${{ matrix.job.target }}
 
       ###########################################################echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png
-      - name: icon stuff
+      - name: 图标替换
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         shell: bash
@@ -943,7 +969,7 @@ jobs:
           sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
 
-      - name: set server, key, and apiserver
+      - name: 设置服务器、密钥和 api服务
         continue-on-error: true
         shell: bash
         run: |
@@ -952,8 +978,17 @@ jobs:
           sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           # ./flutter/pubspec.yaml
           #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
-          
-      - name: change appname to custom
+      
+      - name: 报告状态 55
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 55%"}'
+      
+      - name: 将应用程序名称更改为自定义
         if: inputs.appname != 'rustdesk'
         continue-on-error: true
         shell: bash
@@ -986,7 +1021,7 @@ jobs:
           sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/lib/desktop/widgets/tabbar_widget.dart
           sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./libs/hbb_common/src/config.rs
 
-      - name: change url to custom
+      - name: 将 URL 更改为自定义
         if: fromJson(inputs.extras).urlLink != 'https://rustdesk.com'
         continue-on-error: true
         shell: bash
@@ -1000,7 +1035,7 @@ jobs:
           sed -i -e "s|child: Text('rustdesk.com',|child: Text('${{ fromJson(inputs.extras).urlLink }}',|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|https://rustdesk.com/privacy.html|${{ fromJson(inputs.extras).urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
 
-      - name: change download link to custom
+      - name: 将下载链接更改为自定义
         if: fromJson(inputs.extras).downloadLink != 'https://rustdesk.com/download'
         continue-on-error: true
         shell: bash
@@ -1009,7 +1044,7 @@ jobs:
           sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
           sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./src/ui/index.tis
 
-      - name: allow custom.txt
+      - name: 允许自定义.txt
         continue-on-error: true
         shell: bash
         run: |
@@ -1017,51 +1052,51 @@ jobs:
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
-      - name: fix connection delay
+      - name: 修复连接延迟
         continue-on-error: true
         if: ${{ fromJson(inputs.extras).delayFix == 'true' }}
         shell: bash
         run: |
           sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
 
-      - name: add cycle monitors to toolbar
+      - name: 将循环监视器添加到工具栏
         continue-on-error: true
         if: fromJson(inputs.extras).cycleMonitor == 'true'
         run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff
           git apply cycle_monitor.diff
 
-      - name: use X for offline display instead of orange circle
+      - name: 使用 X 代替橙色圆圈进行离线显示
         continue-on-error: true
         if: fromJson(inputs.extras).xOffline == 'true'
         run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff
           git apply xoffline.diff
 
-      - name: hide-cm
+      - name: 允许隐藏远程屏幕上的连接窗口
         continue-on-error: true
         if: fromJson(inputs.extras).hidecm == 'true'
         run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff
           git apply hidecm.diff
 
-      - name: removeNewVersionNotif
+      - name: 删除新版本通知
         continue-on-error: true
         if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
         run: | 
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
-      - name: Report Status
+      - name: 报告状态 60
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "35% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 60%"}'
 
-      - name: replace flutter icons
+      - name: 替换 Flutter 图标
         if: ${{ inputs.iconlink != 'false' }}
         run: |
           pushd ./flutter
@@ -1071,7 +1106,7 @@ jobs:
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
       ##########################################################
 
-      - name: Build rustdesk lib
+      - name: 构建 rustdesk lib
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -1101,22 +1136,22 @@ jobs:
             ;;
           esac
 
-      - name: Upload Rustdesk library to Artifacts
+      - name: 将 Rustdesk 库上传到 Artifacts
         uses: actions/upload-artifact@master
         with:
           name: librustdesk.so.${{ matrix.job.target }}
           path: ./target/${{ matrix.job.target }}/release/liblibrustdesk.so
 
-      - name: Report Status
+      - name: 报告状态 65%
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "45% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 65%"}'
 
-      - name: icons
+      - name: 图标
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
@@ -1125,7 +1160,7 @@ jobs:
           convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
           cp ./flutter/assets/icon.svg ./res/scalable.svg
 
-      - name: Build rustdesk
+      - name: 构建 Rstdesk
         shell: bash
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
@@ -1184,14 +1219,14 @@ jobs:
           mv ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk ./${{ inputs.filename }}-${{ matrix.job.arch }}.apk
           popd
 
-      - name: Report Status
+      - name: 报告状态 75%
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "75% complete"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 75%"}'
       
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
@@ -1208,41 +1243,41 @@ jobs:
           # override default build-tools version (29.0.3) -- optional
           BUILD_TOOLS_VERSION: "30.0.2"
 
-      - name: send file to rdgen server
+      - name: 将文件发送到 rdgen 服务器
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
-      - name: send file to api server
+      - name: 发送文件到 api 服务器
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" ${{ inputs.apiServer }}/api/save_custom_client
 
-      - name: Report Status
+      - name: 报告状态 成功
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "成功"}'
 
-      - name: failed
+      - name: 生成失败
         if: failure()
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "生成失败，请重试"}'
 
-      - name: failed
+      - name: 用户取消
         if: cancelled()
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "后台手动取消构建"}'
