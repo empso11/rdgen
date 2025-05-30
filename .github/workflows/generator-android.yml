@@ -709,28 +709,28 @@ jobs:
               arch: aarch64,
               target: aarch64-linux-android,
               # os: ubuntu-24.04,
-              os: self-hosted,
+              # os: self-hosted,
+              os: [self-hosted, Rc1],
               reltype: release,
               suffix: "",
-              runner_label: Rc1,
             }
           - {
               arch: armv7,
               target: armv7-linux-androideabi,
               # os: ubuntu-24.04,
-              os: self-hosted,
+              # os: self-hosted,
+              os: [self-hosted, Rc2],
               reltype: release,
               suffix: "",
-              runner_label: Rc2,
             }
           - {
               arch: x86_64,
               target: x86_64-linux-android,
               # os: ubuntu-24.04,
-              os: self-hosted,
+              # os: self-hosted,
+              os: [self-hosted, Rc3],
               reltype: release,
               suffix: "",
-              runner_label: Rc3,
             }
     steps:
       - name: 可用磁盘空间（Ubuntu）
