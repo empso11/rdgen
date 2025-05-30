@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title id="pageTitle">远程客户端生成器</title>
+    <title id="pageTitle">Build Generated Successfully</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -124,33 +124,33 @@
     </svg>
 
     <div>
-        <h2 class="success-text">构建成功生成</h2>
+        <h2 class="success-text">Build Generated Successfully</h2>
         <div class="download-section">
             {% if platform == 'windows' %}
-                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
-                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi</a>
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
+                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">Download {{filename}}.msi</a>
             {% elif platform == 'linux' %}
-                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
-                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.deb</a>
-                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.AppImage</a>
-                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.AppImage</a>
-                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.flatpak</a>
-                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.flatpak</a>
+                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.deb</a>
+                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.deb</a>
+                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.AppImage</a>
+                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.AppImage</a>
+                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.flatpak</a>
+                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.flatpak</a>
             {% elif platform == 'android' %}
-                <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.apk</a>
-                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.apk</a>
-                <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
+                <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.apk</a>
+                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.apk</a>
+                <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-armv7.apk</a>
             {% elif platform == 'macos' %}
-                <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.dmg</a>
-                <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.dmg</a>
+                <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.dmg</a>
+                <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.dmg</a>
             {% else %}
-                <p>错误：未生成任何文件</p>
+                <p>Error: No file generated</p>
             {% endif %}
         </div>
     </div>
@@ -168,34 +168,34 @@
             };
             const platformNote = document.getElementById('platformNote');
 
-            // 重置所有Logo
+            // Reset all logos
             Object.values(platformLogos).forEach(logo => logo.style.display = 'none');
 
-            // 设置合适的Logo和标题
+            // Set appropriate logo and title
             if (platform === 'macos') {
-                document.getElementById('pageTitle').textContent = 'MacOS 构建已生成';
+                document.getElementById('pageTitle').textContent = 'MacOS Build Generated';
                 platformLogos.macos.style.display = 'block';
-                platformNote.textContent = '注意：在macOS上运行应用程序可能需要调整安全设置。';
+                platformNote.textContent = 'Note: For macOS, you may need to adjust security settings to run the application.';
                 platformNote.style.display = 'block';
             } else if (platform === 'windows') {
-                document.getElementById('pageTitle').textContent = 'Windows 构建已生成';
+                document.getElementById('pageTitle').textContent = 'Windows Build Generated';
                 platformLogos.windows.style.display = 'block';
-                platformNote.textContent = '注意：可能需要禁用SmartScreen或调整Windows安全设置。';
+                platformNote.textContent = 'Note: You might need to disable SmartScreen or adjust Windows security settings.';
                 platformNote.style.display = 'block';
             } else if (platform === 'linux') {
-                document.getElementById('pageTitle').textContent = 'Linux 构建已生成';
+                document.getElementById('pageTitle').textContent = 'Linux Build Generated';
                 platformLogos.linux.style.display = 'block';
-                platformNote.textContent = '注意：确保已安装必要的依赖项。';
+                platformNote.textContent = 'Note: Ensure you have the necessary dependencies installed.';
                 platformNote.style.display = 'block';
             } else if (platform === 'android') {
-                document.getElementById('pageTitle').textContent = 'Android 构建已生成';
+                document.getElementById('pageTitle').textContent = 'Android Build Generated';
                 platformLogos.android.style.display = 'block';
-                platformNote.textContent = '注意：在设备设置中可能需要启用“未知来源”。';
+                platformNote.textContent = 'Note: You may need to enable "Unknown Sources" in device settings.';
                 platformNote.style.display = 'block';
             }
         }
 
-        // 页面加载时调用
+        // Call on page load
         updatePlatformUI();
     </script>
 </body>
