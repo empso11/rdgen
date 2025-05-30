@@ -27,8 +27,8 @@ jobs:
         job:
           - {
               target: x86_64-unknown-linux-gnu,
-              os: ubuntu-24.04,    #直接使用github官方
-              # os: self-hosted,
+              # os: ubuntu-24.04,    #直接使用github官方
+              os: self-hosted,
               extra-build-args: "",
             }
     steps:
