@@ -808,7 +808,8 @@ jobs:
                openjdk-17-jdk-headless \
                pkg-config \
                tree \
-               wget
+               wget \
+               autoconf
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
