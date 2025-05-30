@@ -699,7 +699,8 @@ jobs:
   build-rustdesk-android:
     needs: [generate-bridge-linux]
     name: 生成Android  ${{ matrix.job.target }}
-    runs-on: ${{ matrix.job.os }}
+    # runs-on: ${{ matrix.job.os }}
+    runs-on: [${{ matrix.job.os }}, ${{ matrix.job.runner_label }}]
     strategy:
       fail-fast: false
       matrix:
@@ -711,6 +712,7 @@ jobs:
               os: self-hosted,
               reltype: release,
               suffix: "",
+              runner_label: Rc1,
             }
           - {
               arch: armv7,
@@ -719,6 +721,7 @@ jobs:
               os: self-hosted,
               reltype: release,
               suffix: "",
+              runner_label: Rc2,
             }
           - {
               arch: x86_64,
@@ -727,6 +730,7 @@ jobs:
               os: self-hosted,
               reltype: release,
               suffix: "",
+              runner_label: Rc3,
             }
     steps:
       - name: 可用磁盘空间（Ubuntu）
