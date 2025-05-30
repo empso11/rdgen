@@ -714,24 +714,24 @@ jobs:
               reltype: release,
               suffix: "",
             }
-          - {
-              arch: armv7,
-              target: armv7-linux-androideabi,
-              # os: ubuntu-24.04,
-              # os: self-hosted,
-              os: [self-hosted, rc2],
-              reltype: release,
-              suffix: "",
-            }
-          - {
-              arch: x86_64,
-              target: x86_64-linux-android,
-              # os: ubuntu-24.04,
-              # os: self-hosted,
-              os: [self-hosted, rc3],
-              reltype: release,
-              suffix: "",
-            }
+          # - {
+          #     arch: armv7,
+          #     target: armv7-linux-androideabi,
+          #     # os: ubuntu-24.04,
+          #     # os: self-hosted,
+          #     os: [self-hosted, rc2],
+          #     reltype: release,
+          #     suffix: "",
+          #   }
+          # - {
+          #     arch: x86_64,
+          #     target: x86_64-linux-android,
+          #     # os: ubuntu-24.04,
+          #     # os: self-hosted,
+          #     os: [self-hosted, rc3],
+          #     reltype: release,
+          #     suffix: "",
+          #   }
     steps:
       - name: 可用磁盘空间（Ubuntu）
         uses: jlumbroso/free-disk-space@main
