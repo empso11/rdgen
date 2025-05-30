@@ -699,8 +699,8 @@ jobs:
   build-rustdesk-android:
     needs: [generate-bridge-linux]
     name: 生成Android  ${{ matrix.job.target }}
-    # runs-on: ${{ matrix.job.os }}
-    runs-on: [${{ matrix.job.os }}, ${{ matrix.job.runner_label }}]
+    runs-on: ${{ matrix.job.os }}
+    # runs-on: [${{ matrix.job.os }}, ${{ matrix.job.runner_label }}]
     strategy:
       fail-fast: false
       matrix:
