@@ -739,6 +739,13 @@ jobs:
           large-packages: false
           docker-images: true
           swap-storage: false
+      - name: Restore vcpkg cache  #缓存
+        uses: actions/cache@v3
+        with:
+          path: |
+            /opt/artifacts/vcpkg/downloads
+            /opt/artifacts/vcpkg/installed
+          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v6
@@ -880,6 +887,13 @@ jobs:
             exit 1
           fi
         shell: bash
+      - name: Save vcpkg cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            /opt/artifacts/vcpkg/downloads
+            /opt/artifacts/vcpkg/installed
+          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Restore bridge files
         uses: actions/download-artifact@master
