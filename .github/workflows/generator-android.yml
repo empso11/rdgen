@@ -1077,6 +1077,14 @@ jobs:
           docker-images: true
           swap-storage: false
 
+      - name: 恢复 vcpkg 缓存  #缓存
+          uses: actions/cache@v3
+          with:
+            path: |
+              /opt/artifacts/vcpkg/downloads
+              /opt/artifacts/vcpkg/installed
+            key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
+
       - name: 导出 GitHub Actions 缓存环境变量
         uses: actions/github-script@v6
         with:
@@ -1137,6 +1145,19 @@ jobs:
           repository: empso11/rustdesk
           submodules: recursive
 
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+
+      - name: 使用 Github Actions 二进制缓存设置 vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: /opt/artifacts/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
       - name: 安装 flutter
         uses: subosito/flutter-action@v2
         with:
@@ -1149,25 +1170,61 @@ jobs:
           cd $(dirname $(dirname $(which flutter)))
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
+      - name: 安装 vcpkg 依赖项
+          run: |
+            case ${{ matrix.job.target }} in
+              aarch64-linux-android)
+              ANDROID_TARGET=arm64-v8a
+              ;;
+              armv7-linux-androideabi)
+                ANDROID_TARGET=armeabi-v7a
+              ;;
+              x86_64-linux-android)
+                ANDROID_TARGET=x86_64
+              ;;
+              i686-linux-android)
+                ANDROID_TARGET=x86
+              ;;
+            esac
+            if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
+              find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+                echo "$_1:"
+                echo "======"
+                cat "$_1"
+                echo "======"
+                echo ""
+              done
+              exit 1
+            fi
+          shell: bash
+          
+        - name: 保存 vcpkg 缓存
+          uses: actions/cache@v3
+          with:
+            path: |
+              /opt/artifacts/vcpkg/downloads
+              /opt/artifacts/vcpkg/installed
+            key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
+
       - name: 恢复 bridge 文件
         uses: actions/download-artifact@master
         with:
           name: bridge-artifact
           path: ./
 
-      - name: 列出可用 Artifacts
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const run_id = process.env.GITHUB_RUN_ID;
-            const repo = process.env.GITHUB_REPOSITORY;
-            const [owner, repoName] = repo.split("/");
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner,
-              repo: repoName,
-              run_id,
-            });
-            console.log("Artifacts:", artifacts.data.artifacts);
+      # - name: 列出可用 Artifacts
+      #   uses: actions/github-script@v6
+      #   with:
+      #     script: |
+      #       const run_id = process.env.GITHUB_RUN_ID;
+      #       const repo = process.env.GITHUB_REPOSITORY;
+      #       const [owner, repoName] = repo.split("/");
+      #       const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+      #         owner,
+      #         repo: repoName,
+      #         run_id,
+      #       });
+      #       console.log("Artifacts:", artifacts.data.artifacts);
 
       # - name: 下载 Rustdesk so (arm64-v8a)
       #   uses: actions/download-artifact@master
