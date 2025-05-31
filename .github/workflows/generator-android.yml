@@ -773,7 +773,7 @@ jobs:
   build-rustdesk-android:
     needs: [generate-bridge-linux]
     name: 生成Android各架构so
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, rc2]
     strategy:
       fail-fast: false
       matrix:
