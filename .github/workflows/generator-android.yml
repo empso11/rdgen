@@ -1058,180 +1058,168 @@ jobs:
 
 
   build-rustdesk-android-universal:
-    # needs: [build-rustdesk-android]
     needs: [generate-bridge-linux]
     name: 构建 android 通用 apk
-    runs-on: [self-hosted, rc1]
+    runs-on: [self-hosted, rc1]  
     env:
       reltype: release
       suffix: ""
     steps:
       - name: 可用磁盘空间（Ubuntu）
-          uses: jlumbroso/free-disk-space@main
-          with:
-            tool-cache: false
-            android: false
-            dotnet: true
-            haskell: true
-            large-packages: false
-            docker-images: true
-            swap-storage: false
-        - name: 恢复 vcpkg 缓存  #缓存
-          uses: actions/cache@v3
-          with:
-            path: |
-              /opt/artifacts/vcpkg/downloads
-              /opt/artifacts/vcpkg/installed
-            key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: false
 
-        - name: 导出 GitHub Actions 缓存环境变量
-          uses: actions/github-script@v6
-          with:
-            script: |
-              core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-              core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: 恢复 vcpkg 缓存  #缓存
+        uses: actions/cache@v3
+        with:
+          path: |
+            /opt/artifacts/vcpkg/downloads
+            /opt/artifacts/vcpkg/installed
+          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
-        - name: 设置 rdgen 值
-          if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-          run: |
-            echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
+      - name: 导出 GitHub Actions 缓存环境变量
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-        - name: 设置 rdgen 值
-          if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
-          run: |
-            echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $GITHUB_ENV
+      - name: 设置 rdgen 值
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+        run: |
+          echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
 
-        - name: 报告状态 5%
-          uses: fjogeleit/http-request-action@v1
-          continue-on-error: true
-          with:
-            url: ${{ env.STATUS_URL }}
-            method: 'POST'
-            customHeaders: '{"Content-Type": "application/json"}'
-            data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  5%"}'
+      - name: 设置 rdgen 值
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        run: |
+          echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $GITHUB_ENV
 
-        - name: 安装依赖项
-          run: |
-            sudo apt-get update
-            sudo apt-get install -y \
-                clang \
-                cmake \
-                curl \
-                gcc-multilib \
-                git \
-                g++ \
-                g++-multilib \
-                imagemagick \
-                libayatana-appindicator3-dev \
-                libasound2-dev \
-                libc6-dev \
-                libclang-dev \
-                libunwind-dev \
-                libgstreamer1.0-dev \
-                libgstreamer-plugins-base1.0-dev \
-                libgtk-3-dev \
-                libpam0g-dev \
-                libpulse-dev \
-                libva-dev \
-                libvdpau-dev \
-                libxcb-randr0-dev \
-                libxcb-shape0-dev \
-                libxcb-xfixes0-dev \
-                libxdo-dev \
-                libxfixes-dev \
-                llvm-dev \
-                nasm \
-                ninja-build \
-                openjdk-17-jdk-headless \
-                pkg-config \
-                tree \
-                wget \
-                autoconf
+      - name: 报告状态 5%
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  5%"}'
 
-        - name: 检出源代码
-          if: ${{ env.VERSION != 'master' }}
-          uses: actions/checkout@v4
-          with:
-            repository: empso11/rustdesk
-            ref: refs/tags/${{ env.VERSION }}
-            submodules: recursive
+      - name: 安装依赖项
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+              clang \
+              cmake \
+              curl \
+              gcc-multilib \
+              git \
+              g++ \
+              g++-multilib \
+              imagemagick \
+              libayatana-appindicator3-dev \
+              libasound2-dev \
+              libc6-dev \
+              libclang-dev \
+              libunwind-dev \
+              libgstreamer1.0-dev \
+              libgstreamer-plugins-base1.0-dev \
+              libgtk-3-dev \
+              libpam0g-dev \
+              libpulse-dev \
+              libva-dev \
+              libvdpau-dev \
+              libxcb-randr0-dev \
+              libxcb-shape0-dev \
+              libxcb-xfixes0-dev \
+              libxdo-dev \
+              libxfixes-dev \
+              llvm-dev \
+              nasm \
+              ninja-build \
+              openjdk-17-jdk-headless \
+              pkg-config \
+              tree \
+              wget \
+              autoconf
 
-        - name: 报告状态 10%
-          uses: fjogeleit/http-request-action@v1
-          continue-on-error: true
-          with:
-            url: ${{ env.STATUS_URL }}
-            method: 'POST'
-            customHeaders: '{"Content-Type": "application/json"}'
-            data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  10%"}'
-        
-        - name: 检出源代码
-          if: ${{ env.VERSION == 'master' }}
-          uses: actions/checkout@v4
-          with:
-            repository: empso11/rustdesk
-            submodules: recursive
+      - name: 检出源代码
+        if: ${{ env.VERSION != 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: empso11/rustdesk
+          ref: refs/tags/${{ env.VERSION }}
+          submodules: recursive
 
-        - name: 安装 flutter
-          uses: subosito/flutter-action@v2
-          with:
-            channel: "stable"
-            flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
+      - name: 报告状态 10%
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  10%"}'
 
-        - name: 修补 flutter
-          continue-on-error: true
-          run: |
-            cd $(dirname $(dirname $(which flutter)))
-            [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
-    
-        - name: 报告状态 15%
-          uses: fjogeleit/http-request-action@v1
-          continue-on-error: true
-          with:
-            url: ${{ env.STATUS_URL }}
-            method: 'POST'
-            customHeaders: '{"Content-Type": "application/json"}'
-            data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  15%"}'
+      - name: 检出源代码
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: empso11/rustdesk
+          submodules: recursive
 
-        - uses: nttld/setup-ndk@v1
-          id: setup-ndk
-          with:
-            ndk-version: ${{ env.NDK_VERSION }}
-            add-to-path: true
+      - name: 安装 flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
 
-        - name: 使用 Github Actions 二进制缓存设置 vcpkg
-          uses: lukka/run-vcpkg@v11
-          with:
-            vcpkgDirectory: /opt/artifacts/vcpkg
-            vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-            doNotCache: false
+      - name: 修补 flutter
+        continue-on-error: true
+        run: |
+          cd $(dirname $(dirname $(which flutter)))
+          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
-        - name: 报告状态 25
-          uses: fjogeleit/http-request-action@v1
-          continue-on-error: true
-          with:
-            url: ${{ env.STATUS_URL }}
-            method: 'POST'
-            customHeaders: '{"Content-Type": "application/json"}'
-            data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
+      - name: 报告状态 15%
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成  15%"}'
 
-        - name: 安装 vcpkg 依赖项
-          run: |
-            case ${{ matrix.job.target }} in
-              aarch64-linux-android)
-              ANDROID_TARGET=arm64-v8a
-              ;;
-              armv7-linux-androideabi)
-                ANDROID_TARGET=armeabi-v7a
-              ;;
-              x86_64-linux-android)
-                ANDROID_TARGET=x86_64
-              ;;
-              i686-linux-android)
-                ANDROID_TARGET=x86
-              ;;
-            esac
-            if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+
+      - name: 使用 Github Actions 二进制缓存设置 vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: /opt/artifacts/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: 报告状态 25
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
+
+      - name: 安装 vcpkg 依赖项
+        run: |
+          for ABI in arm64-v8a armeabi-v7a x86_64; do
+            echo "==> build_android_deps.sh $ABI"
+            if ! ./flutter/build_android_deps.sh "$ABI"; then
               find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
                 echo "$_1:"
                 echo "======"
@@ -1241,41 +1229,43 @@ jobs:
               done
               exit 1
             fi
-          shell: bash
-          
-        - name: 保存 vcpkg 缓存
-          uses: actions/cache@v3
-          with:
-            path: |
-              /opt/artifacts/vcpkg/downloads
-              /opt/artifacts/vcpkg/installed
-            key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
+          done
+        shell: bash
 
-        - name: 报告状态 45
-          uses: fjogeleit/http-request-action@v1
-          continue-on-error: true
-          with:
-            url: ${{ env.STATUS_URL }}
-            method: 'POST'
-            customHeaders: '{"Content-Type": "application/json"}'
-            data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 45%"}'
+      - name: 保存 vcpkg 缓存
+        uses: actions/cache@v3
+        with:
+          path: |
+            /opt/artifacts/vcpkg/downloads
+            /opt/artifacts/vcpkg/installed
+          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
-        - name: 恢复 Bridge 文件
-          uses: actions/download-artifact@master
-          with:
-            name: bridge-artifact
-            path: ./
+      - name: 报告状态 45
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 45%"}'
 
-        - name: 安装 Rust 工具链
-          uses: dtolnay/rust-toolchain@v1
-          with:
-            toolchain: ${{ env.RUST_VERSION }}
-            components: "rustfmt"
+      - name: 恢复 Bridge 文件
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
 
-        - uses: Swatinem/rust-cache@v2
-          with:
-            prefix-key: rustdesk-lib-cache-android # TODO: drop '-android' part after caches are invalidated
-            key: ${{ matrix.job.target }}
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: "rustfmt"
+
+      - name: Rust 构建产物缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rustdesk-lib-cache-android
+          key: universal-${{ env.reltype }}-${{ hashFiles('Cargo.lock') }}
 
       # - name: 列出可用 Artifacts
       #   uses: actions/github-script@v6
@@ -1309,6 +1299,8 @@ jobs:
       #     name: librustdesk.so.x86_64-linux-android
       #     path: ./flutter/android/app/src/main/jniLibs/x86_64
 
+      - name: 清理历史 so
+        run: rm -rf ./flutter/android/app/src/main/jniLibs/*
       # 1. 新增：直接本地编译所有 so
       - name: 编译 Rust so (arm64-v8a)
         run: |
