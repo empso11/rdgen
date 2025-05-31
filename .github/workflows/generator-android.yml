@@ -682,11 +682,8 @@
 
   
 
-
-
-name: 自定义 Android 通用客户端生成器
-run-name: 自定义 Android 通用客户端生成器
-
+name: 自定义 Android 客户端生成器
+run-name: 自定义 Android 客户端生成器
 on: 
   workflow_dispatch:
     inputs:
@@ -741,26 +738,31 @@ on:
         default: '{}'
         type: string
 
+
 env:
-  SCITER_RUST_VERSION: "1.75"
-  RUST_VERSION: "1.75"
+  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, 1.78 版的 ABI 也发生了变化，导致我们的 sciter 版本无法工作, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  RUST_VERSION: "1.75" # sciter 在 m1 1.78 上失败，原因是 https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5"
+  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  # 适用于 arm64 linux，因为官方 Dart SDK 无法工作
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # vcpkg版本：2024.07.12
   VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
+  #签名密钥环境变量检查
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
+
   VCPKG_DOWNLOAD_TIMEOUT: "120"
   VCPKG_MAX_DOWNLOAD_ATTEMPTS: "5"
 
@@ -772,15 +774,40 @@ jobs:
 
   build-rustdesk-android:
     needs: [generate-bridge-linux]
-    name: 生成Android各架构so
-    runs-on: [self-hosted, rc2]
+    name: 生成Android  ${{ matrix.job.target }}
+    runs-on: ${{ matrix.job.os }}
+    # runs-on: [${{ matrix.job.os }}, ${{ matrix.job.runner_label }}]
     strategy:
       fail-fast: false
       matrix:
         job:
-          - { arch: aarch64, target: aarch64-linux-android }
-          - { arch: armv7, target: armv7-linux-androideabi }
-          - { arch: x86_64, target: x86_64-linux-android }
+          - {
+              arch: aarch64,
+              target: aarch64-linux-android,
+              # os: ubuntu-24.04,
+              # os: self-hosted,
+              os: [self-hosted, rc1],
+              reltype: release,
+              suffix: "",
+            }
+          - {
+              arch: armv7,
+              target: armv7-linux-androideabi,
+              # os: ubuntu-24.04,
+              # os: self-hosted,
+              os: [self-hosted, rc2],
+              reltype: release,
+              suffix: "",
+            }
+          - {
+              arch: x86_64,
+              target: x86_64-linux-android,
+              # os: ubuntu-24.04,
+              # os: self-hosted,
+              os: [self-hosted, rc3],
+              reltype: release,
+              suffix: "",
+            }
     steps:
       - name: 可用磁盘空间（Ubuntu）
         uses: jlumbroso/free-disk-space@main
@@ -922,14 +949,14 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
-      - name: 报告状态 20
+      - name: 报告状态 25
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 20%"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
 
       # - name: 安装 vcpkg 依赖项
       #   run: |
@@ -967,14 +994,14 @@ jobs:
       #       /opt/artifacts/vcpkg/installed
       #     key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
-      - name: 报告状态 25
+      - name: 报告状态 45
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 45%"}'
 
       - name: 恢复 Bridge 文件
         uses: actions/download-artifact@master
@@ -988,28 +1015,48 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           components: "rustfmt"
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rustdesk-lib-cache-android # TODO: drop '-android' part after caches are invalidated
+          key: ${{ matrix.job.target }}
+
       - name: 构建 rustdesk lib
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           rustup target add ${{ matrix.job.target }}
-          cargo install cargo-ndk --version ${{ env.CARGO_NDK_VERSION }} --locked || true
+          cargo install cargo-ndk --version ${{ env.CARGO_NDK_VERSION }} --locked
           case ${{ matrix.job.target }} in
             aarch64-linux-android)
-              ./flutter/ndk_arm64.sh
-              ;;
+            ./flutter/ndk_arm64.sh
+            mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
+            cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+            ;;
             armv7-linux-androideabi)
               ./flutter/ndk_arm.sh
-              ;;
+              mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
+              cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
+            ;;
             x86_64-linux-android)
               ./flutter/ndk_x64.sh
-              ;;
+              mkdir -p ./flutter/android/app/src/main/jniLibs/x86_64
+              cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
+            ;;
+            i686-linux-android)
+              ./flutter/ndk_x86.sh
+              mkdir -p ./flutter/android/app/src/main/jniLibs/x86
+              cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86/librustdesk.so
+            ;;
           esac
 
-      - name: 上传so
-        uses: actions/upload-artifact@v3
+      - name: 将 so 库上传到 Artifacts
+        uses: actions/upload-artifact@master
         with:
           name: librustdesk.so.${{ matrix.job.target }}
           path: ./target/${{ matrix.job.target }}/release/liblibrustdesk.so
 
+          
   build-rustdesk-android-universal:
     needs: [build-rustdesk-android]
     name: build rustdesk android universal apk
