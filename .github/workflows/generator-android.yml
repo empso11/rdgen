@@ -714,24 +714,24 @@ jobs:
               reltype: release,
               suffix: "",
             }
-          # - {
-          #     arch: armv7,
-          #     target: armv7-linux-androideabi,
-          #     # os: ubuntu-24.04,
-          #     # os: self-hosted,
-          #     os: [self-hosted, rc2],
-          #     reltype: release,
-          #     suffix: "",
-          #   }
-          # - {
-          #     arch: x86_64,
-          #     target: x86_64-linux-android,
-          #     # os: ubuntu-24.04,
-          #     # os: self-hosted,
-          #     os: [self-hosted, rc3],
-          #     reltype: release,
-          #     suffix: "",
-          #   }
+          - {
+              arch: armv7,
+              target: armv7-linux-androideabi,
+              # os: ubuntu-24.04,
+              # os: self-hosted,
+              os: [self-hosted, rc2],
+              reltype: release,
+              suffix: "",
+            }
+          - {
+              arch: x86_64,
+              target: x86_64-linux-android,
+              # os: ubuntu-24.04,
+              # os: self-hosted,
+              os: [self-hosted, rc3],
+              reltype: release,
+              suffix: "",
+            }
     steps:
       - name: 可用磁盘空间（Ubuntu）
         uses: jlumbroso/free-disk-space@main
@@ -882,40 +882,41 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "已完成 25%"}'
 
-      - name: 安装 vcpkg 依赖项
-        run: |
-          case ${{ matrix.job.target }} in
-            aarch64-linux-android)
-            ANDROID_TARGET=arm64-v8a
-            ;;
-            armv7-linux-androideabi)
-              ANDROID_TARGET=armeabi-v7a
-            ;;
-            x86_64-linux-android)
-              ANDROID_TARGET=x86_64
-            ;;
-            i686-linux-android)
-              ANDROID_TARGET=x86
-            ;;
-          esac
-          if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
-            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
-              echo "$_1:"
-              echo "======"
-              cat "$_1"
-              echo "======"
-              echo ""
-            done
-            exit 1
-          fi
-        shell: bash
-      - name: 保存 vcpkg 缓存
-        uses: actions/cache@v3
-        with:
-          path: |
-            /opt/artifacts/vcpkg/downloads
-            /opt/artifacts/vcpkg/installed
-          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
+      # - name: 安装 vcpkg 依赖项
+      #   run: |
+      #     case ${{ matrix.job.target }} in
+      #       aarch64-linux-android)
+      #       ANDROID_TARGET=arm64-v8a
+      #       ;;
+      #       armv7-linux-androideabi)
+      #         ANDROID_TARGET=armeabi-v7a
+      #       ;;
+      #       x86_64-linux-android)
+      #         ANDROID_TARGET=x86_64
+      #       ;;
+      #       i686-linux-android)
+      #         ANDROID_TARGET=x86
+      #       ;;
+      #     esac
+      #     if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
+      #       find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+      #         echo "$_1:"
+      #         echo "======"
+      #         cat "$_1"
+      #         echo "======"
+      #         echo ""
+      #       done
+      #       exit 1
+      #     fi
+      #   shell: bash
+
+      # - name: 保存 vcpkg 缓存
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       /opt/artifacts/vcpkg/downloads
+      #       /opt/artifacts/vcpkg/installed
+      #     key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT_ID }}-${{ hashFiles('vcpkg.json') }}
 
       - name: 报告状态 45
         uses: fjogeleit/http-request-action@v1
