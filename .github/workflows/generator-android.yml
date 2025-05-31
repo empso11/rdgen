@@ -1290,8 +1290,9 @@ jobs:
   build-rustdesk-android-universal:
     needs: [generate-bridge-linux]
     name: build rustdesk android universal apk
-    if: ${{ inputs.upload-artifact }}
-    runs-on: ubuntu-22.04
+    # if: ${{ inputs.upload-artifact }}
+    # runs-on: ubuntu-22.04
+    runs-on: [self-hosted, rc2]
     env:
       reltype: release
       x86_target: "" # can be ",android-x86"
