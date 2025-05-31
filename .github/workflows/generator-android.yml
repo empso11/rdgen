@@ -767,10 +767,10 @@ env:
   VCPKG_MAX_DOWNLOAD_ATTEMPTS: "5"
 
 jobs:
-  generate-bridge-linux:
-    uses: ./.github/workflows/bridge.yml
-    with:
-      version: ${{ fromJson(inputs.extras).version }}
+  # generate-bridge-linux:
+  #   uses: ./.github/workflows/bridge.yml
+  #   with:
+  #     version: ${{ fromJson(inputs.extras).version }}
 
   # build-rustdesk-android:
   #   needs: [generate-bridge-linux]
@@ -1059,7 +1059,7 @@ jobs:
 
   build-rustdesk-android-universal:
     # needs: [build-rustdesk-android]
-    needs: [generate-bridge-linux]
+    # needs: [generate-bridge-linux]
     name: build rustdesk android universal apk
     runs-on: [self-hosted, rc2]
     env:
@@ -1154,6 +1154,20 @@ jobs:
         with:
           name: bridge-artifact
           path: ./
+
+      - name: 列出可用 Artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const run_id = process.env.GITHUB_RUN_ID;
+            const repo = process.env.GITHUB_REPOSITORY;
+            const [owner, repoName] = repo.split("/");
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner,
+              repo: repoName,
+              run_id,
+            });
+            console.log("Artifacts:", artifacts.data.artifacts);
 
       - name: 下载 Rustdesk so (arm64-v8a)
         uses: actions/download-artifact@master
