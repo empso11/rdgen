@@ -1061,7 +1061,7 @@ jobs:
     # needs: [build-rustdesk-android]
     needs: [generate-bridge-linux]
     name: 构建 android 通用 apk
-    runs-on: [self-hosted, rc2]
+    runs-on: [self-hosted, rc1]
     env:
       reltype: release
       suffix: ""
