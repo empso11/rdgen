@@ -1349,7 +1349,8 @@ jobs:
                openjdk-17-jdk-headless \
                pkg-config \
                tree \
-               wget
+               wget \
+               autoconf
 
       - name: 检出源代码
         uses: actions/checkout@v4
