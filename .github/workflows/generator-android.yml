@@ -1149,11 +1149,11 @@ jobs:
           cd $(dirname $(dirname $(which flutter)))
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
-      - name: 恢复 bridge 文件
-        uses: actions/download-artifact@master
-        with:
-          name: bridge-artifact
-          path: ./
+      # - name: 恢复 bridge 文件
+      #   uses: actions/download-artifact@master
+      #   with:
+      #     name: bridge-artifact
+      #     path: ./
 
       - name: 列出可用 Artifacts
         uses: actions/github-script@v6
